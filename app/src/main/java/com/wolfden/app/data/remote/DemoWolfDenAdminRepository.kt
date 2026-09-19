@@ -18,6 +18,11 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         TrainingClassDto(2, "CrossFit", "امروز", "20:00", 12, 10, "مربی Wolf"),
         TrainingClassDto(3, "Strength", "فردا", "18:00", 10, 5, "مربی Wolf")
     )
+    private val bookings = mutableListOf(
+        AdminBookingDto("b-001", "m-001", "علی رضایی", 1, "CrossFit", "امروز", "18:00", "CONFIRMED", "2026-09-19 10:00"),
+        AdminBookingDto("b-002", "m-002", "سارا احمدی", 1, "CrossFit", "امروز", "18:00", "CONFIRMED", "2026-09-19 10:05"),
+        AdminBookingDto("b-003", "m-003", "محمد کریمی", 2, "CrossFit", "امروز", "20:00", "CONFIRMED", "2026-09-19 10:10")
+    )
     private val attendance = mutableListOf<AttendanceDto>()
     private val coaches = listOf(
         CoachDto("c-001", "مربی Wolf", "09121111111"),
@@ -27,6 +32,13 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     override fun getSubscriptions() = subscriptions.toList()
     override fun getClasses() = classes.toList()
     override fun getCoaches() = coaches
+    override fun getBookings() = bookings.filter { it.status == "CONFIRMED" }.toList()
+    override fun cancelBooking(bookingId: String): Boolean {
+        val i = bookings.indexOfFirst { it.id == bookingId }
+        if (i < 0) return false
+        bookings[i] = bookings[i].copy(status = "CANCELLED")
+        return true
+    }
     override fun getAttendance(date: String) = attendance.filter { it.date == date }.toList()
     override fun createMember(request: CreateMemberRequest): AdminMemberDto {
         val member = AdminMemberDto("m-" + (members.size + 1), request.name, request.phone, "ACTIVE")
