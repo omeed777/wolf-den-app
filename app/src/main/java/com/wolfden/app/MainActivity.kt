@@ -383,6 +383,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
     var showAddClass by rememberSaveable { mutableStateOf(false) }
     var showAttendance by rememberSaveable { mutableStateOf(false) }
     var showAddBooking by rememberSaveable { mutableStateOf(false) }
+    var showAddCoach by rememberSaveable { mutableStateOf(false) }
     val bookings = remember { mutableStateListOf<AdminBookingDto>().apply { addAll(repository.getBookings()) } }
     val members = remember { mutableStateListOf<AdminMemberDto>().apply { addAll(repository.getMembers()) } }
     val subscriptions = remember { mutableStateListOf<AdminSubscriptionDto>().apply { addAll(repository.getSubscriptions()) } }
@@ -430,8 +431,24 @@ private fun AdminDashboard(onBack: () -> Unit) {
                 val booking = bookings.firstOrNull { it.id == bookingId }\n                if (booking != null && repository.cancelBooking(bookingId)) {\n                    bookings.removeAll { it.id == bookingId }\n                    val classIndex = classes.indexOfFirst { it.id == booking.classId }\n                    if (classIndex >= 0) classes[classIndex] = classes[classIndex].copy(booked = (classes[classIndex].booked - 1).coerceAtLeast(0))\n                    val subIndex = subscriptions.indexOfFirst { it.memberId == booking.memberId }\n                    if (subIndex >= 0) subscriptions[subIndex] = subscriptions[subIndex].copy(remainingSessions = (subscriptions[subIndex].remainingSessions + 1).coerceAtMost(subscriptions[subIndex].totalSessions))\n                }
             })
             5 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false })
-            else -> AdminCoachesScreen(Modifier.padding(padding), repository.getCoaches())
+            else -> {
+                val coaches = remember { mutableStateListOf<CoachDto>().apply { addAll(repository.getCoaches()) } }
+                AdminCoachesScreen(
+                    Modifier.padding(padding), coaches,
+                    onAdd = { showAddCoach = true },
+                    onUpdate = { coach, request -> val updated = repository.updateCoach(coach.id, request); val i = coaches.indexOfFirst { it.id == updated.id }; if (i >= 0) coaches[i] = updated },
+                    onDelete = { coach -> if (repository.deleteCoach(coach.id)) coaches.removeAll { it.id == coach.id } }
+                )
+            }
         }
+    }
+
+    if (showAddCoach) {
+        val coaches = repository.getCoaches()
+        AddCoachDialog(onDismiss = { showAddCoach = false }, onSave = { name, phone ->
+            repository.createCoach(CreateCoachRequest(name, phone))
+            showAddCoach = false
+        })
     }
 
     if (showAddMember) {
@@ -731,19 +748,34 @@ private fun AdminBookingsScreen(
 }
 
 @Composable
-private fun AdminCoachesScreen(modifier: Modifier, coaches: List<CoachDto>) {
+private fun AdminCoachesScreen(modifier: Modifier, coaches: List<CoachDto>, onAdd: () -> Unit, onUpdate: (CoachDto, UpdateCoachRequest) -> Unit, onDelete: (CoachDto) -> Unit) {
+    var selected by remember { mutableStateOf<CoachDto?>(null) }
+    var editing by remember { mutableStateOf<CoachDto?>(null) }
     Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("مربی‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black)
-        Text("مربی‌های ثبت‌شده Wolf Den", color = WolfMuted)
-        coaches.forEach { coach ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(coach.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(coach.phone, color = WolfMuted)
-                }
-            }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) { Text("مربی‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("مدیریت مربی‌های Wolf Den", color = WolfMuted) }
+            Button(onClick = onAdd) { Text("مربی جدید") }
         }
+        coaches.forEach { coach -> Card(Modifier.fillMaxWidth().clickable { selected = coach }) { Column(Modifier.padding(16.dp)) { Text(coach.name, fontWeight = FontWeight.Bold, fontSize = 18.sp); Text(coach.phone, color = WolfMuted) } } }
     }
+    selected?.let { coach -> AlertDialog(onDismissRequest = { selected = null }, title = { Text(coach.name) }, text = { Text("تلفن: " + coach.phone) }, confirmButton = { TextButton(onClick = { editing = coach; selected = null }) { Text("ویرایش") } }, dismissButton = { Row { TextButton(onClick = { onDelete(coach); selected = null }) { Text("حذف", color = Color(0xFFFF6B6B)) }; TextButton(onClick = { selected = null }) { Text("بستن") } } }) }
+    editing?.let { coach -> EditCoachDialog(coach, { editing = null }) { request -> onUpdate(coach, request); editing = null } }
+}
+@Composable
+private fun EditCoachDialog(coach: CoachDto, onDismiss: () -> Unit, onSave: (UpdateCoachRequest) -> Unit) {
+    var name by remember { mutableStateOf(coach.name) }; var phone by remember { mutableStateOf(coach.phone) }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("ویرایش مربی") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(name, { name = it }, label = { Text("نام") }, singleLine = true)
+        OutlinedTextField(phone, { phone = it }, label = { Text("موبایل") }, singleLine = true)
+    }}, confirmButton = { Button(enabled = name.isNotBlank() && phone.isNotBlank(), onClick = { onSave(UpdateCoachRequest(name, phone)) }) { Text("ذخیره") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } })
+}
+@Composable
+private fun AddCoachDialog(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
+    var name by remember { mutableStateOf("") }; var phone by remember { mutableStateOf("") }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("مربی جدید") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(name, { name = it }, label = { Text("نام") }, singleLine = true)
+        OutlinedTextField(phone, { phone = it }, label = { Text("موبایل") }, singleLine = true)
+    }}, confirmButton = { Button(enabled = name.isNotBlank() && phone.isNotBlank(), onClick = { onSave(name, phone) }) { Text("ثبت") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } })
 }
 
 @Composable
