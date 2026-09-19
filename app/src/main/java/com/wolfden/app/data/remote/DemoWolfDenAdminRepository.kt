@@ -18,6 +18,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         TrainingClassDto(2, "CrossFit", "امروز", "20:00", 12, 10, "مربی Wolf"),
         TrainingClassDto(3, "Strength", "فردا", "18:00", 10, 5, "مربی Wolf")
     )
+    private val attendance = mutableListOf<AttendanceDto>()
     private val coaches = listOf(
         CoachDto("c-001", "مربی Wolf", "09121111111"),
         CoachDto("c-002", "مربی دوم", "09122222222")
@@ -26,7 +27,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     override fun getSubscriptions() = subscriptions.toList()
     override fun getClasses() = classes.toList()
     override fun getCoaches() = coaches
-    override fun getAttendance(date: String) = emptyList<AttendanceDto>()
+    override fun getAttendance(date: String) = attendance.filter { it.date == date }.toList()
     override fun createMember(request: CreateMemberRequest): AdminMemberDto {
         val member = AdminMemberDto("m-" + (members.size + 1), request.name, request.phone, "ACTIVE")
         members += member
@@ -44,6 +45,15 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         classes += result
         return result
     }
-    override fun recordAttendance(request: RecordAttendanceRequest): AttendanceDto =
-        AttendanceDto("a-" + System.currentTimeMillis(), request.memberId, request.classId, request.date, request.present)
+    override fun recordAttendance(request: RecordAttendanceRequest): AttendanceDto {
+        val existing = attendance.indexOfFirst {
+            it.memberId == request.memberId && it.classId == request.classId && it.date == request.date
+        }
+        val result = AttendanceDto(
+            if (existing >= 0) attendance[existing].id else "a-" + System.currentTimeMillis(),
+            request.memberId, request.classId, request.date, request.present
+        )
+        if (existing >= 0) attendance[existing] = result else attendance += result
+        return result
+    }
 }
