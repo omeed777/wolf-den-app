@@ -99,7 +99,7 @@ private fun WolfDenApp() {
     var loggedIn by rememberSaveable {
         mutableStateOf(
             preferences.getBoolean("logged_in", false) &&
-                (!productionMode || (!tokenStore.get().isNullOrBlank() && memberId.isNotBlank()))
+                (!productionMode || !tokenStore.get().isNullOrBlank())
         )
     }
     var phone by rememberSaveable {
