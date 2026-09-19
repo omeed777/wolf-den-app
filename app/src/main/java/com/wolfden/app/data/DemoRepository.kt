@@ -124,7 +124,10 @@ class DemoRepository(context: Context) : WolfDenRepository {
             .put("status", "CONFIRMED")
             .put("createdAt", booking.createdAt)
         json.put(obj)
-        preferences.edit().putString("admin_bookings", json.toString()).apply()
+        preferences.edit()
+            .putString("admin_bookings", json.toString())
+            .putInt("admin_sub_m-001_remaining", member.subscription.remainingSessions)
+            .apply()
     }
 
     private fun persistSharedAdminBookingCancellation(bookingId: String) {
@@ -134,7 +137,10 @@ class DemoRepository(context: Context) : WolfDenRepository {
             val o = json.getJSONObject(i)
             if (o.optString("id") == bookingId) o.put("status", "CANCELLED")
         }
-        preferences.edit().putString("admin_bookings", json.toString()).apply()
+        preferences.edit()
+            .putString("admin_bookings", json.toString())
+            .putInt("admin_sub_m-001_remaining", member.subscription.remainingSessions)
+            .apply()
     }
 
     private fun persistState() {
