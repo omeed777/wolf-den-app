@@ -131,6 +131,15 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         return true
     }
     override fun getAttendance(date: String) = attendance.filter { it.date == date }.toList()
+    override fun updateMember(memberId: String, request: UpdateMemberRequest): AdminMemberDto {
+        val index = members.indexOfFirst { it.id == memberId }
+        if (index < 0) throw IllegalArgumentException("عضو پیدا نشد.")
+        val current = members[index]
+        val updated = current.copy(name = request.name.trim(), phone = request.phone.trim(), status = request.status)
+        members[index] = updated
+        return updated
+    }
+
     override fun createMember(request: CreateMemberRequest): AdminMemberDto {
         val member = AdminMemberDto("m-" + (members.size + 1), request.name, request.phone, "ACTIVE")
         members += member
