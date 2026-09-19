@@ -90,6 +90,7 @@ private fun WolfDenApp() {
         mutableStateOf(preferences.getString("member_id", "") ?: "")
     }
     var accessToken by remember { mutableStateOf(tokenStore.get()) }
+    var showAdmin by rememberSaveable { mutableStateOf(false) }
 
     fun loginDemo() {
         preferences.edit()
@@ -134,14 +135,17 @@ private fun WolfDenApp() {
         )
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            if (!loggedIn) {
+            if (showAdmin) {
+                AdminDashboard(onBack = { showAdmin = false })
+            } else if (!loggedIn) {
                 LoginFlow(
                     phone = phone,
                     onPhoneChange = { phone = it },
                     authService = authService,
                     productionMode = productionMode,
                     onDemoLogin = ::loginDemo,
-                    onProductionLogin = ::loginProduction
+                    onProductionLogin = ::loginProduction,
+                    onOpenAdmin = { showAdmin = true }
                 )
             } else {
                 val repository = remember(accessToken, memberId, productionMode) {
@@ -178,7 +182,8 @@ private fun LoginFlow(
     authService: WolfDenAuthService?,
     productionMode: Boolean,
     onDemoLogin: () -> Unit,
-    onProductionLogin: (com.wolfden.app.data.remote.AuthResponse) -> Unit
+    onProductionLogin: (com.wolfden.app.data.remote.AuthResponse) -> Unit,
+    onOpenAdmin: () -> Unit
 ) {
     var otpStep by rememberSaveable { mutableStateOf(false) }
     var otp by rememberSaveable { mutableStateOf("") }
@@ -228,7 +233,7 @@ private fun LoginFlow(
     }
 
     if (!otpStep) {
-        LoginScreen(phone, onPhoneChange, ::requestOtp, loading, error, productionMode)
+        LoginScreen(phone, onPhoneChange, ::requestOtp, loading, error, productionMode, onOpenAdmin)
     } else {
         OtpScreen(
             phone = phone,
@@ -253,7 +258,8 @@ private fun LoginScreen(
     onContinue: () -> Unit,
     loading: Boolean,
     error: String?,
-    productionMode: Boolean
+    productionMode: Boolean,
+    onOpenAdmin: () -> Unit
 ) {
     Column(
         Modifier.fillMaxSize().padding(24.dp).background(WolfBlack),
@@ -298,6 +304,10 @@ private fun LoginScreen(
             Text("کد تایید از طریق Backend ارسال می‌شود.", color = WolfMuted, fontSize = 12.sp)
         } else {
             Text("Demo Mode: ارسال واقعی پیامک هنوز فعال نشده است.", color = WolfMuted, fontSize = 12.sp)
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = onOpenAdmin, modifier = Modifier.fillMaxWidth()) {
+                Text("پنل مدیریت (Demo)")
+            }
         }
     }
 }
@@ -357,14 +367,14 @@ private fun OtpScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AdminDashboard() {
+private fun AdminDashboard(onBack: () -> Unit) {
     val context = LocalContext.current
     val repository = remember { DemoWolfDenAdminRepository(context) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val members = remember { mutableStateListOf<AdminMemberDto>().apply { addAll(repository.getMembers()) } }
     val subscriptions = remember { mutableStateListOf<AdminSubscriptionDto>().apply { addAll(repository.getSubscriptions()) } }
     val classes = remember { mutableStateListOf<TrainingClassDto>().apply { addAll(repository.getClasses()) } }
-    Scaffold(containerColor = WolfSurface, topBar = { TopAppBar(title = { Text("مدیریت Wolf Den", fontWeight = FontWeight.Black) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = WolfBlack)) }, bottomBar = { NavigationBar { listOf("اعضا", "اشتراک‌ها", "کلاس‌ها").forEachIndexed { i, label -> NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Text(if (i == 0) "●" else if (i == 1) "◆" else "▣") }, label = { Text(label) }) } } }) { padding ->
+    Scaffold(containerColor = WolfSurface, topBar = { TopAppBar(navigationIcon = { TextButton(onClick = onBack) { Text("بازگشت") } }, title = { Text("مدیریت Wolf Den", fontWeight = FontWeight.Black) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = WolfBlack)) }, bottomBar = { NavigationBar { listOf("اعضا", "اشتراک‌ها", "کلاس‌ها").forEachIndexed { i, label -> NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Text(if (i == 0) "●" else if (i == 1) "◆" else "▣") }, label = { Text(label) }) } } }) { padding ->
         when (tab) {
             0 -> AdminMembersScreen(Modifier.padding(padding), members)
             1 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions)
