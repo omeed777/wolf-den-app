@@ -412,24 +412,36 @@ private fun AdminDashboard(onBack: () -> Unit) {
         when (tab) {
             0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes, bookings)
             1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true }, onEditSubscription = { tab = 2 }, onUpdateMember = { member ->
-                val updated = try { repository.updateMember(member.id, UpdateMemberRequest(member.name, member.phone, member.status)) } catch (e: Exception) { adminMessage = e.message ?: "ویرایش عضو انجام نشد."; return@AdminDashboard }
-                val index = members.indexOfFirst { it.id == updated.id }
-                if (index >= 0) members[index] = updated
+                try {
+                    val updated = repository.updateMember(member.id, UpdateMemberRequest(member.name, member.phone, member.status))
+                    val index = members.indexOfFirst { it.id == updated.id }
+                    if (index >= 0) members[index] = updated
+                } catch (e: Exception) {
+                    adminMessage = e.message ?: "ویرایش عضو انجام نشد."
+                }
             })
             2 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions, members, onRenew = { subscription ->
-                val updated = try { repository.updateSubscription(
-                    subscription.memberId,
-                    UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.totalSessions, "ACTIVE", subscription.expiresAt)
-                ) } catch (e: Exception) { adminMessage = e.message ?: "تمدید اشتراک انجام نشد."; return@AdminDashboard }
-                val index = subscriptions.indexOfFirst { it.id == updated.id }
-                if (index >= 0) subscriptions[index] = updated
+                try {
+                    val updated = repository.updateSubscription(
+                        subscription.memberId,
+                        UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.totalSessions, "ACTIVE", subscription.expiresAt)
+                    )
+                    val index = subscriptions.indexOfFirst { it.id == updated.id }
+                    if (index >= 0) subscriptions[index] = updated
+                } catch (e: Exception) {
+                    adminMessage = e.message ?: "تمدید اشتراک انجام نشد."
+                }
             }, onUpdate = { subscription ->
-                val updated = try { repository.updateSubscription(
-                    subscription.memberId,
-                    UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.remainingSessions, subscription.status, subscription.expiresAt)
-                ) } catch (e: Exception) { adminMessage = e.message ?: "ویرایش اشتراک انجام نشد."; return@AdminDashboard }
-                val index = subscriptions.indexOfFirst { it.id == updated.id }
-                if (index >= 0) subscriptions[index] = updated
+                try {
+                    val updated = repository.updateSubscription(
+                        subscription.memberId,
+                        UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.remainingSessions, subscription.status, subscription.expiresAt)
+                    )
+                    val index = subscriptions.indexOfFirst { it.id == updated.id }
+                    if (index >= 0) subscriptions[index] = updated
+                } catch (e: Exception) {
+                    adminMessage = e.message ?: "ویرایش اشتراک انجام نشد."
+                }
             })
             3 -> AdminClassesScreen(Modifier.padding(padding), classes, coaches, onAdd = { showAddClass = true }, onUpdate = { cls, request -> try { val updated = repository.updateClass(cls.id, request); val index = classes.indexOfFirst { it.id == updated.id }; if (index >= 0) classes[index] = updated } catch (e: Exception) { adminMessage = e.message ?: "ویرایش کلاس انجام نشد." } }, onDelete = { cls -> try { if (repository.deleteClass(cls.id)) classes.removeAll { it.id == cls.id } } catch (e: Exception) { adminMessage = e.message ?: "حذف کلاس انجام نشد." } })
             4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onAdd = { showAddBooking = true }, onCancel = { bookingId ->
