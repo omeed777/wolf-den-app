@@ -31,6 +31,23 @@ jobs:
       - name: Build release APK
         run: gradle --no-daemon --stacktrace assembleRelease
 
+      - name: Build release AAB
+        run: gradle --no-daemon --stacktrace bundleRelease
+
+      - name: Verify release AAB output
+        run: |
+          test -f app/build/outputs/bundle/release/app-release.aab
+          ls -lh app/build/outputs/bundle/release/app-release.aab
+          sha256sum app/build/outputs/bundle/release/app-release.aab
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: wolf-den-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Verify release APK output
         run: |
           test -f app/build/outputs/apk/release/app-release-unsigned.apk
