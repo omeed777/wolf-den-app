@@ -404,7 +404,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
         }}
     ) { padding ->
         when (tab) {
-            0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes)
+            0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes, bookings)
             1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true }, onEditSubscription = { tab = 2 }, onUpdateMember = { member ->
                 val updated = repository.updateMember(member.id, UpdateMemberRequest(member.name, member.phone, member.status))
                 val index = members.indexOfFirst { it.id == updated.id }
@@ -676,12 +676,13 @@ private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDt
 }
 
 @Composable
-private fun AdminOverviewScreen(modifier: Modifier, members: List<AdminMemberDto>, subscriptions: List<AdminSubscriptionDto>, classes: List<TrainingClassDto>) {
+private fun AdminOverviewScreen(modifier: Modifier, members: List<AdminMemberDto>, subscriptions: List<AdminSubscriptionDto>, classes: List<TrainingClassDto>, bookings: List<AdminBookingDto>) {
     val activeMembers = members.count { it.status == "ACTIVE" }
     val activeSubscriptions = subscriptions.count { it.status == "ACTIVE" }
     val lowSessions = subscriptions.count { it.remainingSessions <= 2 }
     val totalCapacity = classes.sumOf { it.capacity }
     val booked = classes.sumOf { it.booked }
+    val confirmedBookings = bookings.count { it.status == "CONFIRMED" }
     Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("داشبورد مدیریت", fontSize = 28.sp, fontWeight = FontWeight.Black)
         Text("نمای کلی وضعیت Wolf Den", color = WolfMuted)
@@ -690,6 +691,7 @@ private fun AdminOverviewScreen(modifier: Modifier, members: List<AdminMemberDto
         AdminStatCard("اشتراک فعال", activeSubscriptions.toString())
         AdminStatCard("اشتراک با جلسات کم", lowSessions.toString())
         AdminStatCard("رزرو کلاس‌ها", "$booked / $totalCapacity")
+        AdminStatCard("رزروهای فعال", confirmedBookings.toString())
     }
 }
 
@@ -766,29 +768,36 @@ private fun AdminCoachesScreen(modifier: Modifier, coaches: List<CoachDto>) {
 }
 
 @Composable
-private fun AdminAttendanceScreen(modifier: Modifier, members: List<AdminMemberDto>, classes: List<TrainingClassDto>, onSave: (String, Int, String) -> Unit) {
+private fun AdminAttendanceScreen(modifier: Modifier, members: List<AdminMemberDto>, classes: List<TrainingClassDto>, bookings: List<AdminBookingDto>, onSave: (String, Int, String, Boolean) -> Unit) {
     var memberId by remember { mutableStateOf(members.firstOrNull()?.id ?: "") }
     var classId by remember { mutableIntStateOf(classes.firstOrNull()?.id ?: 0) }
     var date by remember { mutableStateOf("امروز") }
+    var present by remember { mutableStateOf(true) }
+    val confirmed = bookings.any { it.memberId == memberId && it.classId == classId && it.status == "CONFIRMED" }
     Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("حضور و غیاب", fontSize = 28.sp, fontWeight = FontWeight.Black)
-        Text("ثبت حضور اعضا در کلاس", color = WolfMuted)
+        Text("فقط اعضای دارای رزرو فعال می‌توانند حضورشان ثبت شود.", color = WolfMuted)
+        OutlinedTextField(date, { date = it }, label = { Text("تاریخ") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Text("عضو", fontWeight = FontWeight.Bold)
         members.forEach { member ->
-            Row(Modifier.fillMaxWidth().clickable { memberId = member.id }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clickable { memberId = member.id }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(selected = memberId == member.id, onClick = { memberId = member.id })
                 Text(member.name)
             }
         }
         Text("کلاس", fontWeight = FontWeight.Bold)
         classes.forEach { cls ->
-            Row(Modifier.fillMaxWidth().clickable { classId = cls.id }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clickable { classId = cls.id }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(selected = classId == cls.id, onClick = { classId = cls.id })
                 Text(cls.title + " • " + cls.day + " • " + cls.time)
             }
         }
-        Button(enabled = memberId.isNotBlank() && classId > 0, onClick = { onSave(memberId, classId, date) }, modifier = Modifier.fillMaxWidth()) {
-            Text("ثبت حضور")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = present, onCheckedChange = { present = it })
+            Text(if (present) "حاضر" else "غایب")
+        }
+        Button(enabled = memberId.isNotBlank() && classId > 0 && date.isNotBlank() && confirmed, onClick = { onSave(memberId, classId, date, present) }, modifier = Modifier.fillMaxWidth()) {
+            Text(if (confirmed) "ثبت وضعیت حضور" else "این عضو برای این کلاس رزرو فعال ندارد")
         }
     }
 }
