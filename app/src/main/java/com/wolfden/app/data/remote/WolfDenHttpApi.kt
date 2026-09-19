@@ -72,6 +72,7 @@ class WolfDenHttpApi(
             connection.requestMethod = method
             connection.connectTimeout = 15_000
             connection.readTimeout = 15_000
+            connection.setRequestProperty("Accept-Charset", "utf-8")
             connection.setRequestProperty("Accept", "application/json")
             token?.takeIf { it.isNotBlank() }?.let {
                 connection.setRequestProperty("Authorization", "Bearer $it")
@@ -94,7 +95,7 @@ class WolfDenHttpApi(
             val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
 
             if (status !in 200..299) {
-                throw IOException("Wolf Den API returned HTTP $status: $response")
+                throw IOException(apiError(status, response))
             }
 
             return if (response.isBlank()) JSONObject() else JSONObject(response)
@@ -144,3 +145,13 @@ private fun JSONObject.toBookingDto(): BookingDto = BookingDto(
     status = requiredString("status"),
     createdAt = requiredString("createdAt")
 )
+
+private fun apiError(status: Int, response: String): String {
+    return try {
+        val json = JSONObject(response)
+        json.optString("message").takeIf { it.isNotBlank() }?.let { "Wolf Den API error ($status): $it" }
+            ?: "Wolf Den API error ($status)"
+    } catch (_: Exception) {
+        "Wolf Den API error ($status)"
+    }
+}
