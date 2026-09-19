@@ -425,7 +425,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
                 val index = subscriptions.indexOfFirst { it.id == updated.id }
                 if (index >= 0) subscriptions[index] = updated
             })
-            3 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
+            3 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true }, onUpdate = { cls, request -> val updated = repository.updateClass(cls.id, request); val index = classes.indexOfFirst { it.id == updated.id }; if (index >= 0) classes[index] = updated }, onDelete = { cls -> if (repository.deleteClass(cls.id)) classes.removeAll { it.id == cls.id } })
             4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onAdd = { showAddBooking = true }, onCancel = { bookingId ->
                 val booking = bookings.firstOrNull { it.id == bookingId }\n                if (booking != null && repository.cancelBooking(bookingId)) {\n                    bookings.removeAll { it.id == bookingId }\n                    val classIndex = classes.indexOfFirst { it.id == booking.classId }\n                    if (classIndex >= 0) classes[classIndex] = classes[classIndex].copy(booked = (classes[classIndex].booked - 1).coerceAtLeast(0))\n                    val subIndex = subscriptions.indexOfFirst { it.memberId == booking.memberId }\n                    if (subIndex >= 0) subscriptions[subIndex] = subscriptions[subIndex].copy(remainingSessions = (subscriptions[subIndex].remainingSessions + 1).coerceAtMost(subscriptions[subIndex].totalSessions))\n                }
             })
@@ -640,41 +640,20 @@ private fun AdminSubscriptionsScreen(
 }
 
 @Composable
-private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDto>, onAdd: () -> Unit) {
+private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDto>, onAdd: () -> Unit, onUpdate: (TrainingClassDto, UpdateClassRequest) -> Unit, onDelete: (TrainingClassDto) -> Unit) {
     var selectedClass by remember { mutableStateOf<TrainingClassDto?>(null) }
+    var editing by remember { mutableStateOf<TrainingClassDto?>(null) }
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("برنامه کلاس‌ها و ظرفیت", color = WolfMuted) }; Button(onClick = onAdd) { Text("کلاس جدید") } } }
-        items(classes, key = { it.id }) { trainingClass ->
-            val full = trainingClass.booked >= trainingClass.capacity
-            Card(Modifier.fillMaxWidth().clickable { selectedClass = trainingClass }, RoundedCornerShape(18.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text(trainingClass.day + " • " + trainingClass.time, color = WolfMuted)
-                    Text("مربی: " + trainingClass.coach)
-                    Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity, color = if (full) Color.Red else WolfGoldBright)
-                    Text(if (full) "ظرفیت تکمیل است" else "ظرفیت خالی: " + (trainingClass.capacity - trainingClass.booked), color = WolfMuted)
-                }
-            }
-        }
+        items(classes, key = { it.id }) { cls -> Card(Modifier.fillMaxWidth().clickable { selectedClass = cls }, RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(cls.title, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(cls.day + " • " + cls.time, color = WolfMuted); Text("مربی: " + cls.coach); Text("ظرفیت: " + cls.booked + " / " + cls.capacity, color = if (cls.booked >= cls.capacity) Color.Red else WolfGoldBright) } } }
     }
-    selectedClass?.let { trainingClass ->
-        AlertDialog(
-            onDismissRequest = { selectedClass = null },
-            confirmButton = { TextButton(onClick = { selectedClass = null }) { Text("بستن") } },
-            title = { Text(trainingClass.title) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("روز: " + trainingClass.day)
-                    Text("ساعت: " + trainingClass.time)
-                    Text("مربی: " + trainingClass.coach)
-                    Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity)
-                    Text("جای خالی: " + (trainingClass.capacity - trainingClass.booked))
-                }
-            }
-        )
-    }
+    selectedClass?.let { cls -> AlertDialog(onDismissRequest = { selectedClass = null }, title = { Text(cls.title) }, text = { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Text("روز: " + cls.day); Text("ساعت: " + cls.time); Text("مربی: " + cls.coach); Text("ظرفیت: " + cls.booked + " / " + cls.capacity) } }, confirmButton = { TextButton(onClick = { editing = cls; selectedClass = null }) { Text("ویرایش") } }, dismissButton = { Row { if (cls.booked == 0) TextButton(onClick = { onDelete(cls); selectedClass = null }) { Text("حذف", color = Color(0xFFFF6B6B)) }; TextButton(onClick = { selectedClass = null }) { Text("بستن") } } }) }
+    editing?.let { cls -> EditClassDialog(cls, { editing = null }) { request -> onUpdate(cls, request); editing = null } }
 }
 
+@Composable private fun EditClassDialog(cls: TrainingClassDto, onDismiss: () -> Unit, onSave: (UpdateClassRequest) -> Unit) {
+    var title by remember { mutableStateOf(cls.title) }; var day by remember { mutableStateOf(cls.day) }; var time by remember { mutableStateOf(cls.time) }; var capacity by remember { mutableStateOf(cls.capacity.toString()) }; var coach by remember { mutableStateOf(cls.coach) }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("ویرایش کلاس") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(title, { title = it }, label = { Text("عنوان") }, singleLine = true); OutlinedTextField(day, { day = it }, label = { Text("روز") }, singleLine = true); OutlinedTextField(time, { time = it }, label = { Text("ساعت") }, singleLine = true); OutlinedTextField(capacity, { capacity = it.filter(Char::isDigit).take(2) }, label = { Text("ظرفیت") }, singleLine = true); OutlinedTextField(coach, { coach = it }, label = { Text("مربی") }, singleLine = true) } }, confirmButton = { val cap = capacity.toIntOrNull() ?: 0; Button(enabled = title.isNotBlank() && day.isNotBlank() && time.isNotBlank() && cap >= cls.booked && cap > 0, onClick = { onSave(UpdateClassRequest(title, day, time, cap, coach)) }) { Text("ذخیره") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } })
 @Composable
 private fun AdminOverviewScreen(modifier: Modifier, members: List<AdminMemberDto>, subscriptions: List<AdminSubscriptionDto>, classes: List<TrainingClassDto>, bookings: List<AdminBookingDto>) {
     val activeMembers = members.count { it.status == "ACTIVE" }
