@@ -5,6 +5,9 @@ interface WolfDenAdminRepository {
     fun getSubscriptions(): List<AdminSubscriptionDto>
     fun getClasses(): List<TrainingClassDto>
     fun getCoaches(): List<CoachDto>
+    fun createCoach(request: CreateCoachRequest): CoachDto
+    fun updateCoach(coachId: String, request: UpdateCoachRequest): CoachDto
+    fun deleteCoach(coachId: String): Boolean
     fun getBookings(): List<AdminBookingDto>
     fun cancelBooking(bookingId: String): Boolean
     fun createBooking(request: AdminCreateBookingRequest): AdminBookingDto
@@ -26,6 +29,9 @@ class RemoteWolfDenAdminRepository(
     override fun getSubscriptions() = api.getSubscriptions(accessToken)
     override fun getClasses() = api.getClasses(accessToken)
     override fun getCoaches() = api.getCoaches(accessToken)
+    override fun createCoach(request: CreateCoachRequest) = api.createCoach(accessToken, request)
+    override fun updateCoach(coachId: String, request: UpdateCoachRequest) = api.updateCoach(accessToken, coachId, request)
+    override fun deleteCoach(coachId: String) = api.deleteCoach(accessToken, coachId)
     override fun getBookings() = api.getBookings(accessToken)
     override fun cancelBooking(bookingId: String) = api.cancelBooking(accessToken, bookingId)
     override fun createBooking(request: AdminCreateBookingRequest) = api.createBooking(accessToken, request)
