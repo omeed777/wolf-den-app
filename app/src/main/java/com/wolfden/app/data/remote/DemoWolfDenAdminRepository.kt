@@ -1,6 +1,8 @@
 package com.wolfden.app.data.remote
 
 import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
 
 class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     private val preferences = context.applicationContext.getSharedPreferences("wolf_den_demo_data", Context.MODE_PRIVATE)
@@ -27,6 +29,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     init {
         loadSharedState()
         loadPersistedCoaches()
+        loadPersistedBookings()
     }
 
     private fun persistCoaches() {
@@ -43,6 +46,41 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         if (loaded.isNotEmpty()) {
             coaches.clear()
             coaches.addAll(loaded)
+        }
+    }
+
+    private fun persistBookings() {
+        val json = JSONArray()
+        bookings.forEach {
+            json.put(JSONObject()
+                .put("id", it.id)
+                .put("memberId", it.memberId)
+                .put("memberName", it.memberName)
+                .put("classId", it.classId)
+                .put("classTitle", it.classTitle)
+                .put("day", it.day)
+                .put("time", it.time)
+                .put("status", it.status)
+                .put("createdAt", it.createdAt))
+        }
+        preferences.edit().putString("admin_bookings", json.toString()).apply()
+    }
+
+    private fun loadPersistedBookings() {
+        val raw = preferences.getString("admin_bookings", null) ?: return
+        try {
+            val json = JSONArray(raw)
+            bookings.clear()
+            for (i in 0 until json.length()) {
+                val o = json.getJSONObject(i)
+                bookings += AdminBookingDto(
+                    o.getString("id"), o.getString("memberId"), o.getString("memberName"),
+                    o.getInt("classId"), o.getString("classTitle"), o.getString("day"),
+                    o.getString("time"), o.getString("status"), o.getString("createdAt")
+                )
+            }
+        } catch (_: Exception) {
+            preferences.edit().remove("admin_bookings").apply()
         }
     }
 
@@ -129,6 +167,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
             cls.day, cls.time, "CONFIRMED", "2026-09-19"
         )
         bookings += booking
+        persistBookings()
         persistSharedState()
         return booking
     }
@@ -152,6 +191,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
                 remainingSessions = (sub.remainingSessions + 1).coerceAtMost(sub.totalSessions)
             )
         }
+        persistBookings()
         persistSharedState()
         return true
     }
