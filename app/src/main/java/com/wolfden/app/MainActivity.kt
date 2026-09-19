@@ -38,6 +38,10 @@ import com.wolfden.app.data.remote.DemoWolfDenAdminRepository
 import com.wolfden.app.data.remote.AdminMemberDto
 import com.wolfden.app.data.remote.AdminSubscriptionDto
 import com.wolfden.app.data.remote.TrainingClassDto
+import com.wolfden.app.data.remote.CreateMemberRequest
+import com.wolfden.app.data.remote.CreateClassRequest
+import com.wolfden.app.data.remote.UpdateSubscriptionRequest
+import com.wolfden.app.data.remote.WolfDenAdminRepository
 import com.wolfden.app.model.TrainingClass
 import com.wolfden.app.viewmodel.WolfDenViewModel
 import com.wolfden.app.viewmodel.WolfDenViewModelFactory
@@ -369,24 +373,67 @@ private fun OtpScreen(
 @Composable
 private fun AdminDashboard(onBack: () -> Unit) {
     val context = LocalContext.current
-    val repository = remember { DemoWolfDenAdminRepository(context) }
+    val repository: WolfDenAdminRepository = remember { DemoWolfDenAdminRepository(context) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var showAddMember by rememberSaveable { mutableStateOf(false) }
+    var showAddClass by rememberSaveable { mutableStateOf(false) }
     val members = remember { mutableStateListOf<AdminMemberDto>().apply { addAll(repository.getMembers()) } }
     val subscriptions = remember { mutableStateListOf<AdminSubscriptionDto>().apply { addAll(repository.getSubscriptions()) } }
     val classes = remember { mutableStateListOf<TrainingClassDto>().apply { addAll(repository.getClasses()) } }
-    Scaffold(containerColor = WolfSurface, topBar = { TopAppBar(navigationIcon = { TextButton(onClick = onBack) { Text("بازگشت") } }, title = { Text("مدیریت Wolf Den", fontWeight = FontWeight.Black) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = WolfBlack)) }, bottomBar = { NavigationBar { listOf("اعضا", "اشتراک‌ها", "کلاس‌ها").forEachIndexed { i, label -> NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Text(if (i == 0) "●" else if (i == 1) "◆" else "▣") }, label = { Text(label) }) } } }) { padding ->
+
+    Scaffold(
+        containerColor = WolfSurface,
+        topBar = { TopAppBar(
+            navigationIcon = { TextButton(onClick = onBack) { Text("بازگشت") } },
+            title = { Text("مدیریت Wolf Den", fontWeight = FontWeight.Black) },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = WolfBlack)
+        ) },
+        bottomBar = { NavigationBar {
+            listOf("اعضا", "اشتراک‌ها", "کلاس‌ها").forEachIndexed { i, label ->
+                NavigationBarItem(selected = tab == i, onClick = { tab = i },
+                    icon = { Text(if (i == 0) "●" else if (i == 1) "◆" else "▣") },
+                    label = { Text(label) })
+            }
+        }}
+    ) { padding ->
         when (tab) {
-            0 -> AdminMembersScreen(Modifier.padding(padding), members)
-            1 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions)
-            else -> AdminClassesScreen(Modifier.padding(padding), classes)
+            0 -> AdminMembersScreen(Modifier.padding(padding), members, onAdd = { showAddMember = true })
+            1 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions) { subscription ->
+                val updated = repository.updateSubscription(
+                    subscription.memberId,
+                    UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.totalSessions, "ACTIVE", subscription.expiresAt)
+                )
+                val index = subscriptions.indexOfFirst { it.id == updated.id }
+                if (index >= 0) subscriptions[index] = updated
+            }
+            else -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
         }
+    }
+
+    if (showAddMember) {
+        AddMemberDialog(
+            onDismiss = { showAddMember = false },
+            onSave = { name, phone ->
+                members += repository.createMember(CreateMemberRequest(name, phone))
+                showAddMember = false
+            }
+        )
+    }
+    if (showAddClass) {
+        AddClassDialog(
+            onDismiss = { showAddClass = false },
+            onSave = { title, day, time, capacity ->
+                classes += repository.createClass(CreateClassRequest(title, day, time, capacity, "c-001"))
+                showAddClass = false
+            }
+        )
     }
 }
 
 @Composable
-private fun AdminMembersScreen(modifier: Modifier, members: List<AdminMemberDto>) {
+private fun AdminMembersScreen(modifier: Modifier, members: List<AdminMemberDto>, onAdd: () -> Unit) {
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("اعضای باشگاه", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("مدیریت اعضای Wolf Den", color = WolfMuted) }
+        item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("اعضای باشگاه", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("مدیریت اعضای Wolf Den", color = WolfMuted) }; Button(onClick = onAdd) { Text("عضو جدید") } } }
         items(members, key = { it.id }) { member ->
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(member.name, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(member.phone, color = WolfMuted); Text("وضعیت: " + member.status, color = WolfGoldBright) } }
         }
@@ -394,7 +441,7 @@ private fun AdminMembersScreen(modifier: Modifier, members: List<AdminMemberDto>
 }
 
 @Composable
-private fun AdminSubscriptionsScreen(modifier: Modifier, subscriptions: List<AdminSubscriptionDto>) {
+private fun AdminSubscriptionsScreen(modifier: Modifier, subscriptions: List<AdminSubscriptionDto>, onRenew: (AdminSubscriptionDto) -> Unit) {
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text("اشتراک‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("وضعیت و جلسات باقی‌مانده اعضا", color = WolfMuted) }
         items(subscriptions, key = { it.id }) { subscription ->
@@ -404,13 +451,43 @@ private fun AdminSubscriptionsScreen(modifier: Modifier, subscriptions: List<Adm
 }
 
 @Composable
-private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDto>) {
+private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDto>, onAdd: () -> Unit) {
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("برنامه کلاس‌ها و ظرفیت", color = WolfMuted) }
+        item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("برنامه کلاس‌ها و ظرفیت", color = WolfMuted) }; Button(onClick = onAdd) { Text("کلاس جدید") } } }
         items(classes, key = { it.id }) { trainingClass ->
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(trainingClass.day + " • " + trainingClass.time, color = WolfMuted); Text("مربی: " + trainingClass.coach); Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity, color = WolfGoldBright) } }
         }
     }
+}
+
+@Composable
+private fun AddMemberDialog(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("ثبت عضو جدید") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedTextField(name, { name = it }, label = { Text("نام و نام خانوادگی") }, singleLine = true)
+            OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(11) }, label = { Text("شماره موبایل") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+        }},
+        confirmButton = { Button(enabled = name.isNotBlank() && phone.length == 11, onClick = { onSave(name, phone) }) { Text("ثبت") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } })
+}
+
+@Composable
+private fun AddClassDialog(onDismiss: () -> Unit, onSave: (String, String, String, Int) -> Unit) {
+    var title by remember { mutableStateOf("CrossFit") }
+    var day by remember { mutableStateOf("") }
+    var time by remember { mutableStateOf("") }
+    var capacity by remember { mutableStateOf("12") }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("ثبت کلاس جدید") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedTextField(title, { title = it }, label = { Text("عنوان") }, singleLine = true)
+            OutlinedTextField(day, { day = it }, label = { Text("روز") }, singleLine = true)
+            OutlinedTextField(time, { time = it }, label = { Text("ساعت") }, singleLine = true)
+            OutlinedTextField(capacity, { capacity = it.filter(Char::isDigit).take(2) }, label = { Text("ظرفیت") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+        }},
+        confirmButton = { Button(enabled = title.isNotBlank() && day.isNotBlank() && time.isNotBlank() && (capacity.toIntOrNull() ?: 0) > 0, onClick = { onSave(title, day, time, capacity.toInt()) }) { Text("ثبت") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } })
 }
 
 @Composable
