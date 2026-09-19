@@ -65,29 +65,21 @@ class DemoRepository(context: Context) : WolfDenRepository {
         if (member.subscription.remainingSessions <= 0) return false
 
         classes[classes.indexOf(target)] = target.copy(booked = target.booked + 1)
-        bookings += Booking(
+        val booking = Booking(
             id = "booking-" + classId + "-" + System.currentTimeMillis(),
             memberId = member.id,
             classId = classId,
             status = BookingStatus.CONFIRMED,
             createdAt = System.currentTimeMillis().toString()
         )
+        bookings += booking
         member = member.copy(
             subscription = member.subscription.copy(
                 remainingSessions = member.subscription.remainingSessions - 1
             )
         )
         persistState()
-        persistSharedAdminBooking(
-            Booking(
-                id = "booking-" + classId + "-" + System.currentTimeMillis(),
-                memberId = member.id,
-                classId = classId,
-                status = BookingStatus.CONFIRMED,
-                createdAt = System.currentTimeMillis().toString()
-            ),
-            target
-        )
+        persistSharedAdminBooking(booking, target)
         return true
     }
 
@@ -166,32 +158,24 @@ class DemoRepository(context: Context) : WolfDenRepository {
     }
 
     private fun loadPersistedState() {
-        val stored = preferences.getString("booked_class_ids", "[]") ?: "[]"
-        val bookedIds = mutableListOf<Int>()
-
+        bookings.clear()
+        val raw = preferences.getString("admin_bookings", "[]") ?: "[]"
         try {
-            val json = JSONArray(stored)
+            val json = JSONArray(raw)
             for (i in 0 until json.length()) {
-                val classId = json.getInt(i)
-                if (classId in classes.map { it.id }) bookedIds += classId
+                val o = json.getJSONObject(i)
+                if (o.optString("memberId") == "m-001" && o.optString("status") == "CONFIRMED") {
+                    bookings += Booking(
+                        id = o.optString("id"),
+                        memberId = "m-001",
+                        classId = o.optInt("classId"),
+                        status = BookingStatus.CONFIRMED,
+                        createdAt = o.optString("createdAt")
+                    )
+                }
             }
         } catch (_: Exception) {
-            preferences.edit().remove("booked_class_ids").apply()
-        }
-
-        bookedIds.distinct().forEach { classId ->
-            val targetIndex = classes.indexOfFirst { it.id == classId }
-            if (targetIndex >= 0) {
-                val target = classes[targetIndex]
-                classes[targetIndex] = target.copy(booked = target.booked + 1)
-                bookings += Booking(
-                    id = "restored-" + classId,
-                    memberId = member.id,
-                    classId = classId,
-                    status = BookingStatus.CONFIRMED,
-                    createdAt = "restored"
-                )
-            }
+            preferences.edit().remove("admin_bookings").apply()
         }
     }
 }
