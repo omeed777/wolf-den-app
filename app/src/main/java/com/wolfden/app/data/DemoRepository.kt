@@ -114,12 +114,15 @@ class DemoRepository(context: Context) : WolfDenRepository {
 
         try {
             val json = JSONArray(stored)
-            for (i in 0 until json.length()) bookedIds += json.getInt(i)
+            for (i in 0 until json.length()) {
+                val classId = json.getInt(i)
+                if (classId in classes.map { it.id }) bookedIds += classId
+            }
         } catch (_: Exception) {
             preferences.edit().remove("booked_class_ids").apply()
         }
 
-        bookedIds.forEach { classId ->
+        bookedIds.distinct().forEach { classId ->
             val targetIndex = classes.indexOfFirst { it.id == classId }
             if (targetIndex >= 0) {
                 val target = classes[targetIndex]
