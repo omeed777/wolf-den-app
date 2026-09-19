@@ -30,9 +30,9 @@ class DemoRepository(context: Context) : WolfDenRepository {
     )
 
     private val classes = mutableListOf(
-        TrainingClass(1, "CrossFit", "امروز", "18:00", 12, 8, "Coach Wolf"),
-        TrainingClass(2, "CrossFit", "امروز", "20:00", 12, 10, "Coach Wolf"),
-        TrainingClass(3, "Strength", "فردا", "18:00", 10, 5, "Coach Wolf")
+        TrainingClass(1, "CrossFit", "امروز", "18:00", 12, 8, "مربی Wolf"),
+        TrainingClass(2, "CrossFit", "امروز", "20:00", 12, 10, "مربی Wolf"),
+        TrainingClass(3, "Strength", "فردا", "18:00", 10, 5, "مربی Wolf")
     )
 
     private val bookings = mutableListOf<Booking>()
