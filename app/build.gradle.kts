@@ -33,8 +33,8 @@ android {
         applicationId = "com.wolfden.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
         buildConfigField("String", "WOLF_DEN_API_BASE_URL", "\"$wolfDenApiBaseUrl\"")
     }
 
