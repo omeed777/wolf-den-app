@@ -41,6 +41,7 @@ import com.wolfden.app.data.remote.TrainingClassDto
 import com.wolfden.app.data.remote.CreateMemberRequest
 import com.wolfden.app.data.remote.CreateClassRequest
 import com.wolfden.app.data.remote.UpdateSubscriptionRequest
+import com.wolfden.app.data.remote.RecordAttendanceRequest
 import com.wolfden.app.data.remote.WolfDenAdminRepository
 import com.wolfden.app.model.TrainingClass
 import com.wolfden.app.viewmodel.WolfDenViewModel
@@ -377,6 +378,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showAddMember by rememberSaveable { mutableStateOf(false) }
     var showAddClass by rememberSaveable { mutableStateOf(false) }
+    var showAttendance by rememberSaveable { mutableStateOf(false) }
     val members = remember { mutableStateListOf<AdminMemberDto>().apply { addAll(repository.getMembers()) } }
     val subscriptions = remember { mutableStateListOf<AdminSubscriptionDto>().apply { addAll(repository.getSubscriptions()) } }
     val classes = remember { mutableStateListOf<TrainingClassDto>().apply { addAll(repository.getClasses()) } }
@@ -389,7 +391,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
             colors = TopAppBarDefaults.topAppBarColors(containerColor = WolfBlack)
         ) },
         bottomBar = { NavigationBar {
-            listOf("اعضا", "اشتراک‌ها", "کلاس‌ها").forEachIndexed { i, label ->
+            listOf("اعضا", "اشتراک‌ها", "کلاس‌ها", "حضور").forEachIndexed { i, label ->
                 NavigationBarItem(selected = tab == i, onClick = { tab = i },
                     icon = { Text(if (i == 0) "●" else if (i == 1) "◆" else "▣") },
                     label = { Text(label) })
@@ -406,7 +408,8 @@ private fun AdminDashboard(onBack: () -> Unit) {
                 val index = subscriptions.indexOfFirst { it.id == updated.id }
                 if (index >= 0) subscriptions[index] = updated
             }
-            else -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
+            2 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
+            else -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, true)); showAttendance = false })
         }
     }
 
@@ -456,6 +459,34 @@ private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDt
         item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("برنامه کلاس‌ها و ظرفیت", color = WolfMuted) }; Button(onClick = onAdd) { Text("کلاس جدید") } } }
         items(classes, key = { it.id }) { trainingClass ->
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(trainingClass.day + " • " + trainingClass.time, color = WolfMuted); Text("مربی: " + trainingClass.coach); Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity, color = WolfGoldBright) } }
+        }
+    }
+}
+
+@Composable
+private fun AdminAttendanceScreen(modifier: Modifier, members: List<AdminMemberDto>, classes: List<TrainingClassDto>, onSave: (String, Int, String) -> Unit) {
+    var memberId by remember { mutableStateOf(members.firstOrNull()?.id ?: "") }
+    var classId by remember { mutableIntStateOf(classes.firstOrNull()?.id ?: 0) }
+    var date by remember { mutableStateOf("امروز") }
+    Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("حضور و غیاب", fontSize = 28.sp, fontWeight = FontWeight.Black)
+        Text("ثبت حضور اعضا در کلاس", color = WolfMuted)
+        Text("عضو", fontWeight = FontWeight.Bold)
+        members.forEach { member ->
+            Row(Modifier.fillMaxWidth().clickable { memberId = member.id }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = memberId == member.id, onClick = { memberId = member.id })
+                Text(member.name)
+            }
+        }
+        Text("کلاس", fontWeight = FontWeight.Bold)
+        classes.forEach { cls ->
+            Row(Modifier.fillMaxWidth().clickable { classId = cls.id }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = classId == cls.id, onClick = { classId = cls.id })
+                Text(cls.title + " • " + cls.day + " • " + cls.time)
+            }
+        }
+        Button(enabled = memberId.isNotBlank() && classId > 0, onClick = { onSave(memberId, classId, date) }, modifier = Modifier.fillMaxWidth()) {
+            Text("ثبت حضور")
         }
     }
 }
