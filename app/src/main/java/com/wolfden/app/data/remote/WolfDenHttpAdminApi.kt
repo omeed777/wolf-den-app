@@ -33,6 +33,19 @@ class WolfDenHttpAdminApi(
             CoachDto(o.requiredString("id"), o.requiredString("name"), o.requiredString("phone"))
         }
 
+    override fun createCoach(accessToken: String, request: CreateCoachRequest): CoachDto =
+        this.request("POST", config.coachesPath, JSONObject().put("name", request.name).put("phone", request.phone), accessToken).let {
+            CoachDto(it.requiredString("id"), it.requiredString("name"), it.requiredString("phone"))
+        }
+
+    override fun updateCoach(accessToken: String, coachId: String, request: UpdateCoachRequest): CoachDto =
+        this.request("PUT", config.coachesPath + "/" + coachId, JSONObject().put("name", request.name).put("phone", request.phone), accessToken).let {
+            CoachDto(it.requiredString("id"), it.requiredString("name"), it.requiredString("phone"))
+        }
+
+    override fun deleteCoach(accessToken: String, coachId: String): Boolean =
+        this.request("DELETE", config.coachesPath + "/" + coachId, token = accessToken).optBoolean("success", true)
+
     override fun getBookings(accessToken: String): List<AdminBookingDto> =
         request("GET", config.bookingsPath, token = accessToken).objects("bookings") { o ->
             AdminBookingDto(o.requiredString("id"), o.requiredString("memberId"), o.requiredString("memberName"), o.getInt("classId"), o.requiredString("classTitle"), o.requiredString("day"), o.requiredString("time"), o.requiredString("status"), o.requiredString("createdAt"))
