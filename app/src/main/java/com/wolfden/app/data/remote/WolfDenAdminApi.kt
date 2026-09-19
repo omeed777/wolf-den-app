@@ -14,6 +14,7 @@ interface WolfDenAdminApi {
     fun getCoaches(accessToken: String): List<CoachDto>
     fun getBookings(accessToken: String): List<AdminBookingDto>
     fun cancelBooking(accessToken: String, bookingId: String): Boolean
+    fun createBooking(accessToken: String, request: AdminCreateBookingRequest): AdminBookingDto
     fun getAttendance(accessToken: String, date: String): List<AttendanceDto>
 
     fun createMember(accessToken: String, request: CreateMemberRequest): AdminMemberDto
@@ -43,6 +44,11 @@ data class CoachDto(
     val id: String,
     val name: String,
     val phone: String
+)
+
+data class AdminCreateBookingRequest(
+    val memberId: String,
+    val classId: Int
 )
 
 data class AdminBookingDto(
