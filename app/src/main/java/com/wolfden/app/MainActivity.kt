@@ -256,7 +256,7 @@ private fun LoginScreen(
     productionMode: Boolean
 ) {
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.fillMaxSize().padding(24.dp).background(WolfBlack),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -314,7 +314,7 @@ private fun OtpScreen(
     productionMode: Boolean
 ) {
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.fillMaxSize().padding(24.dp).background(WolfBlack),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -643,19 +643,40 @@ private fun WolfBrand(size: androidx.compose.ui.unit.Dp) {
     Canvas(Modifier.size(size)) {
         val w = size.toPx()
         val h = size.toPx()
-        val path = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.50f, h * 0.08f)
-            lineTo(w * 0.20f, h * 0.28f)
-            lineTo(w * 0.14f, h * 0.78f)
-            lineTo(w * 0.50f, h * 0.94f)
-            lineTo(w * 0.86f, h * 0.78f)
-            lineTo(w * 0.80f, h * 0.28f)
+        val outer = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.50f, h * 0.05f)
+            lineTo(w * 0.17f, h * 0.24f)
+            lineTo(w * 0.08f, h * 0.76f)
+            lineTo(w * 0.28f, h * 0.67f)
+            lineTo(w * 0.50f, h * 0.95f)
+            lineTo(w * 0.72f, h * 0.67f)
+            lineTo(w * 0.92f, h * 0.76f)
+            lineTo(w * 0.83f, h * 0.24f)
             close()
         }
-        drawPath(path, color = WolfBlack)
-        drawCircle(WolfGoldBright, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.39f, h * 0.48f))
-        drawCircle(WolfGoldBright, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.61f, h * 0.48f))
-        drawLine(WolfGold, androidx.compose.ui.geometry.Offset(w * 0.42f, h * 0.68f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.74f), strokeWidth = w * 0.04f)
-        drawLine(WolfGold, androidx.compose.ui.geometry.Offset(w * 0.58f, h * 0.68f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.74f), strokeWidth = w * 0.04f)
+        drawPath(outer, color = WolfGoldBright)
+
+        val inner = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.50f, h * 0.20f)
+            lineTo(w * 0.28f, h * 0.33f)
+            lineTo(w * 0.25f, h * 0.61f)
+            lineTo(w * 0.50f, h * 0.83f)
+            lineTo(w * 0.75f, h * 0.61f)
+            lineTo(w * 0.72f, h * 0.33f)
+            close()
+        }
+        drawPath(inner, color = WolfBlack)
+
+        drawCircle(WolfGoldBright, w * 0.045f, androidx.compose.ui.geometry.Offset(w * 0.39f, h * 0.47f))
+        drawCircle(WolfGoldBright, w * 0.045f, androidx.compose.ui.geometry.Offset(w * 0.61f, h * 0.47f))
+
+        val muzzle = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.42f, h * 0.64f)
+            lineTo(w * 0.50f, h * 0.71f)
+            lineTo(w * 0.58f, h * 0.64f)
+            lineTo(w * 0.50f, h * 0.79f)
+            close()
+        }
+        drawPath(muzzle, color = WolfGold)
     }
 }
