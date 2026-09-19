@@ -191,6 +191,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         val coachName = coaches.firstOrNull { it.id == request.coachId }?.name ?: throw IllegalArgumentException("مربی پیدا نشد.")
         val result = TrainingClassDto(classes.size + 1, request.title.trim(), request.day.trim(), request.time.trim(), request.capacity, 0, coachName)
         classes += result
+        persistSharedState()
         return result
     }
     override fun updateClass(classId: Int, request: UpdateClassRequest): TrainingClassDto {
@@ -215,6 +216,11 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     }
 
     override fun recordAttendance(request: RecordAttendanceRequest): AttendanceDto {
+        if (members.none { it.id == request.memberId }) throw IllegalArgumentException("عضو پیدا نشد.")
+        if (classes.none { it.id == request.classId }) throw IllegalArgumentException("کلاس پیدا نشد.")
+        if (!bookings.any { it.memberId == request.memberId && it.classId == request.classId && it.status == "CONFIRMED" }) {
+            throw IllegalStateException("برای این عضو در این کلاس رزرو فعال وجود ندارد.")
+        }
         val existing = attendance.indexOfFirst {
             it.memberId == request.memberId && it.classId == request.classId && it.date == request.date
         }
