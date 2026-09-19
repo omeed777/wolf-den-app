@@ -8,7 +8,7 @@ import com.wolfden.app.model.SubscriptionStatus
 import com.wolfden.app.model.TrainingClass
 
 class DemoRepository {
-    private val member = Member(
+    private var member = Member(
         id = "demo-member",
         name = "عضو Wolf Den",
         phone = "09123456789",
@@ -31,7 +31,8 @@ class DemoRepository {
 
     fun getMember(): Member = member
     fun getClasses(): List<TrainingClass> = classes.toList()
-    fun getMyBookings(): List<Booking> = bookings.filter { it.status == BookingStatus.CONFIRMED }
+    fun getMyBookings(): List<Booking> =
+        bookings.filter { it.status == BookingStatus.CONFIRMED }
 
     fun bookClass(classId: Int): Boolean {
         val target = classes.firstOrNull { it.id == classId } ?: return false
@@ -47,6 +48,11 @@ class DemoRepository {
             status = BookingStatus.CONFIRMED,
             createdAt = "now"
         )
+        member = member.copy(
+            subscription = member.subscription.copy(
+                remainingSessions = member.subscription.remainingSessions - 1
+            )
+        )
         return true
     }
 
@@ -61,8 +67,17 @@ class DemoRepository {
 
         val target = classes.firstOrNull { it.id == classId }
         if (target != null) {
-            classes[classes.indexOf(target)] = target.copy(booked = (target.booked - 1).coerceAtLeast(0))
+            classes[classes.indexOf(target)] =
+                target.copy(booked = (target.booked - 1).coerceAtLeast(0))
         }
+
+        member = member.copy(
+            subscription = member.subscription.copy(
+                remainingSessions =
+                    (member.subscription.remainingSessions + 1)
+                        .coerceAtMost(member.subscription.totalSessions)
+            )
+        )
         return true
     }
 }
