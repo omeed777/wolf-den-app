@@ -22,7 +22,7 @@ class DemoRepository(context: Context) : WolfDenRepository {
         subscription = Subscription(
             plan = "۱۲ جلسه در ماه",
             totalSessions = 12,
-            remainingSessions = preferences.getInt("remaining_sessions", 8),
+            remainingSessions = preferences.getInt("admin_m001_remaining", preferences.getInt("remaining_sessions", 8)),
             status = SubscriptionStatus.ACTIVE,
             expiresAt = "2026-10-01"
         )
@@ -37,6 +37,7 @@ class DemoRepository(context: Context) : WolfDenRepository {
     private val bookings = mutableListOf<Booking>()
 
     init {
+        loadPersistedAdminClassState()
         loadPersistedState()
     }
 
@@ -106,6 +107,14 @@ class DemoRepository(context: Context) : WolfDenRepository {
             .putInt("remaining_sessions", member.subscription.remainingSessions)
             .putString("booked_class_ids", confirmedBookings.toString())
             .apply()
+    }
+
+    private fun loadPersistedAdminClassState() {
+        classes.indices.forEach { i ->
+            val cls = classes[i]
+            val stored = preferences.getInt("admin_class_" + cls.id + "_booked", -1)
+            if (stored >= 0) classes[i] = cls.copy(booked = stored)
+        }
     }
 
     private fun loadPersistedState() {
