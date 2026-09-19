@@ -401,7 +401,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
         when (tab) {
             0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes)
             1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true })
-            1 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions) { subscription ->
+            2 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions) { subscription ->
                 val updated = repository.updateSubscription(
                     subscription.memberId,
                     UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.totalSessions, "ACTIVE", subscription.expiresAt)
