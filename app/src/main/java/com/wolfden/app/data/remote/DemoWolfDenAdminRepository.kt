@@ -28,6 +28,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     )
     init {
         loadSharedState()
+        loadPersistedMembers()
         loadPersistedCoaches()
         loadPersistedBookings()
     }
@@ -237,18 +238,46 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         }
         return result
     }
+    private fun persistMembers() {
+        val json = JSONArray()
+        members.forEach {
+            json.put(JSONObject().put("id", it.id).put("name", it.name).put("phone", it.phone).put("status", it.status))
+        }
+        preferences.edit().putString("admin_members", json.toString()).apply()
+    }
+
+    private fun loadPersistedMembers() {
+        val raw = preferences.getString("admin_members", null) ?: return
+        try {
+            val json = JSONArray(raw)
+            val loaded = mutableListOf<AdminMemberDto>()
+            for (i in 0 until json.length()) {
+                val o = json.getJSONObject(i)
+                loaded += AdminMemberDto(o.getString("id"), o.getString("name"), o.getString("phone"), o.getString("status"))
+            }
+            if (loaded.isNotEmpty()) {
+                members.clear()
+                members.addAll(loaded)
+            }
+        } catch (_: Exception) {
+            preferences.edit().remove("admin_members").apply()
+        }
+    }
+
     override fun updateMember(memberId: String, request: UpdateMemberRequest): AdminMemberDto {
         val index = members.indexOfFirst { it.id == memberId }
         if (index < 0) throw IllegalArgumentException("عضو پیدا نشد.")
         val current = members[index]
         val updated = current.copy(name = request.name.trim(), phone = request.phone.trim(), status = request.status)
         members[index] = updated
+        persistMembers()
         return updated
     }
 
     override fun createMember(request: CreateMemberRequest): AdminMemberDto {
         val member = AdminMemberDto("m-" + (members.size + 1), request.name, request.phone, "ACTIVE")
         members += member
+        persistMembers()
         return member
     }
     override fun updateSubscription(memberId: String, request: UpdateSubscriptionRequest): AdminSubscriptionDto {
@@ -256,6 +285,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         val id = if (index >= 0) subscriptions[index].id else "s-" + (subscriptions.size + 1)
         val result = AdminSubscriptionDto(id, memberId, request.plan, request.totalSessions, request.remainingSessions, request.status, request.expiresAt)
         if (index >= 0) subscriptions[index] = result else subscriptions += result
+        persistSharedState()
         return result
     }
     override fun createClass(request: CreateClassRequest): TrainingClassDto {
