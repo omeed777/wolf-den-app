@@ -672,9 +672,50 @@ private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDt
     editing?.let { cls -> EditClassDialog(cls, coaches, { editing = null }) { request -> onUpdate(cls, request); editing = null } }
 }
 
-@Composable private fun EditClassDialog(cls: TrainingClassDto, coaches: List<CoachDto>, onDismiss: () -> Unit, onSave: (UpdateClassRequest) -> Unit) {
-    var title by remember { mutableStateOf(cls.title) }; var day by remember { mutableStateOf(cls.day) }; var time by remember { mutableStateOf(cls.time) }; var capacity by remember { mutableStateOf(cls.capacity.toString()) }; var coach by remember { mutableStateOf(coaches.firstOrNull { it.name == cls.coach } ?: coaches.firstOrNull()) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("ویرایش کلاس") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(title, { title = it }, label = { Text("عنوان") }, singleLine = true); OutlinedTextField(day, { day = it }, label = { Text("روز") }, singleLine = true); OutlinedTextField(time, { time = it }, label = { Text("ساعت") }, singleLine = true); OutlinedTextField(capacity, { capacity = it.filter(Char::isDigit).take(2) }, label = { Text("ظرفیت") }, singleLine = true); coaches.forEach { item -> Row(Modifier.fillMaxWidth().clickable { coach = item }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = coach?.id == item.id, onClick = { coach = item }); Text(item.name) } } } }, confirmButton = { val cap = capacity.toIntOrNull() ?: 0; Button(enabled = title.isNotBlank() && day.isNotBlank() && time.isNotBlank() && cap >= cls.booked && cap > 0, onClick = { onSave(UpdateClassRequest(title, day, time, cap, coach)) }) { Text("ذخیره") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } })
+@Composable private fun EditClassDialog(
+    cls: TrainingClassDto,
+    coaches: List<CoachDto>,
+    onDismiss: () -> Unit,
+    onSave: (UpdateClassRequest) -> Unit
+) {
+    var title by remember { mutableStateOf(cls.title) }
+    var day by remember { mutableStateOf(cls.day) }
+    var time by remember { mutableStateOf(cls.time) }
+    var capacity by remember { mutableStateOf(cls.capacity.toString()) }
+    var coach by remember { mutableStateOf(coaches.firstOrNull { it.name == cls.coach } ?: coaches.firstOrNull()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("ویرایش کلاس") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(title, { title = it }, label = { Text("عنوان") }, singleLine = true)
+                OutlinedTextField(day, { day = it }, label = { Text("روز") }, singleLine = true)
+                OutlinedTextField(time, { time = it }, label = { Text("ساعت") }, singleLine = true)
+                OutlinedTextField(capacity, { capacity = it.filter(Char::isDigit).take(2) }, label = { Text("ظرفیت") }, singleLine = true)
+                Text("مربی", fontWeight = FontWeight.Bold)
+                coaches.forEach { item ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { coach = item }.padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = coach?.id == item.id, onClick = { coach = item })
+                        Text(item.name)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            val cap = capacity.toIntOrNull() ?: 0
+            Button(
+                enabled = title.isNotBlank() && day.isNotBlank() && time.isNotBlank() && cap >= cls.booked && cap > 0 && coach != null,
+                onClick = { onSave(UpdateClassRequest(title, day, time, cap, coach!!.id)) }
+            ) { Text("ذخیره") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
+    )
+}
+
 @Composable
 private fun AdminOverviewScreen(modifier: Modifier, members: List<AdminMemberDto>, subscriptions: List<AdminSubscriptionDto>, classes: List<TrainingClassDto>, bookings: List<AdminBookingDto>) {
     val activeMembers = members.count { it.status == "ACTIVE" }
