@@ -26,6 +26,24 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     )
     init {
         loadSharedState()
+        loadPersistedCoaches()
+    }
+
+    private fun persistCoaches() {
+        val encoded = coaches.joinToString("\n") { listOf(it.id, it.name, it.phone).joinToString("|") }
+        preferences.edit().putString("admin_coaches", encoded).apply()
+    }
+
+    private fun loadPersistedCoaches() {
+        val encoded = preferences.getString("admin_coaches", null) ?: return
+        val loaded = encoded.lines().mapNotNull { line ->
+            val parts = line.split("|")
+            if (parts.size == 3 && parts[0].isNotBlank()) CoachDto(parts[0], parts[1], parts[2]) else null
+        }
+        if (loaded.isNotEmpty()) {
+            coaches.clear()
+            coaches.addAll(loaded)
+        }
     }
 
     private fun persistSharedState() {
