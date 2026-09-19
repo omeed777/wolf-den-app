@@ -7,7 +7,7 @@ import com.wolfden.app.model.Subscription
 import com.wolfden.app.model.SubscriptionStatus
 import com.wolfden.app.model.TrainingClass
 
-class DemoRepository {
+class DemoRepository : WolfDenRepository {
     private var member = Member(
         id = "demo-member",
         name = "عضو Wolf Den",
