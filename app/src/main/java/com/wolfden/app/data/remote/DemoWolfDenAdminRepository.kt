@@ -86,9 +86,19 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
 
     private fun persistSharedState() {
         val editor = preferences.edit()
+        val classJson = JSONArray()
         classes.forEach { cls ->
             editor.putInt("admin_class_" + cls.id + "_booked", cls.booked)
+            classJson.put(JSONObject()
+                .put("id", cls.id)
+                .put("title", cls.title)
+                .put("day", cls.day)
+                .put("time", cls.time)
+                .put("capacity", cls.capacity)
+                .put("booked", cls.booked)
+                .put("coach", cls.coach))
         }
+        editor.putString("admin_classes", classJson.toString())
         subscriptions.forEach { sub ->
             val prefix = "admin_sub_" + sub.memberId + "_"
             editor.putString(prefix + "plan", sub.plan)
@@ -101,6 +111,27 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     }
 
     private fun loadSharedState() {
+        val rawClasses = preferences.getString("admin_classes", null)
+        if (!rawClasses.isNullOrBlank()) {
+            try {
+                val json = JSONArray(rawClasses)
+                val loaded = mutableListOf<TrainingClassDto>()
+                for (i in 0 until json.length()) {
+                    val o = json.getJSONObject(i)
+                    loaded += TrainingClassDto(
+                        o.getInt("id"), o.getString("title"), o.getString("day"),
+                        o.getString("time"), o.getInt("capacity"), o.getInt("booked"),
+                        o.getString("coach")
+                    )
+                }
+                if (loaded.isNotEmpty()) {
+                    classes.clear()
+                    classes.addAll(loaded)
+                }
+            } catch (_: Exception) {
+                preferences.edit().remove("admin_classes").apply()
+            }
+        }
         classes.indices.forEach { i ->
             val cls = classes[i]
             val stored = preferences.getInt("admin_class_" + cls.id + "_booked", -1)
@@ -229,7 +260,8 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     }
     override fun createClass(request: CreateClassRequest): TrainingClassDto {
         val coachName = coaches.firstOrNull { it.id == request.coachId }?.name ?: throw IllegalArgumentException("مربی پیدا نشد.")
-        val result = TrainingClassDto(classes.size + 1, request.title.trim(), request.day.trim(), request.time.trim(), request.capacity, 0, coachName)
+        val nextId = (classes.maxOfOrNull { it.id } ?: 0) + 1
+        val result = TrainingClassDto(nextId, request.title.trim(), request.day.trim(), request.time.trim(), request.capacity, 0, coachName)
         classes += result
         persistSharedState()
         return result
