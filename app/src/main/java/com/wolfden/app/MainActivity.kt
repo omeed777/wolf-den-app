@@ -1001,6 +1001,8 @@ private fun MainShell(viewModel: WolfDenViewModel, onLogout: () -> Unit) {
                     uiState.member?.subscription?.plan ?: "-",
                     uiState.member?.subscription?.remainingSessions ?: 0,
                     uiState.member?.subscription?.totalSessions ?: 0,
+                    uiState.member?.subscription?.status ?: SubscriptionStatus.SUSPENDED,
+                    uiState.member?.subscription?.expiresAt ?: "-",
                     uiState.bookings.size,
                     onLogout
                 ) { tab = 1 }
@@ -1056,6 +1058,8 @@ private fun HomeScreen(
     plan: String,
     remainingSessions: Int,
     totalSessions: Int,
+    subscriptionStatus: SubscriptionStatus,
+    expiresAt: String,
     bookingCount: Int,
     onLogout: () -> Unit,
     onClasses: () -> Unit
@@ -1071,10 +1075,17 @@ private fun HomeScreen(
         }
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = WolfBlack)) {
             Column(Modifier.padding(20.dp)) {
-                Text("اشتراک فعال", color = WolfText)
+                val expired = expiresAt.matches(Regex("^\\\\d{4}-\\\\d{2}-\\\\d{2}$")) && runCatching { java.time.LocalDate.parse(expiresAt).isBefore(java.time.LocalDate.now()) }.getOrDefault(false)
+                val statusText = when {
+                    expired -> "منقضی شده"
+                    subscriptionStatus == SubscriptionStatus.ACTIVE -> "اشتراک فعال"
+                    else -> "اشتراک معلق"
+                }
+                Text(statusText, color = if (expired) Color(0xFFFF6B6B) else WolfText)
                 Text(plan, color = WolfGold, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text("$remainingSessions جلسه", color = WolfText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Text("از مجموع $totalSessions جلسه", color = WolfMuted)
+                Text("تاریخ پایان: $expiresAt", color = WolfMuted, fontSize = 12.sp)
             }
         }
         if (bookingCount > 0) Text("رزروهای فعال: $bookingCount جلسه", color = WolfGoldBright, fontWeight = FontWeight.Bold)
