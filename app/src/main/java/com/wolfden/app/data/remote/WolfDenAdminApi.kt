@@ -7,6 +7,7 @@ package com.wolfden.app.data.remote
  * credentials are embedded in the app until the production backend exists.
  */
 interface WolfDenAdminApi {
+    // The HTTP implementation is available as WolfDenHttpAdminApi; this interface keeps UI/business logic testable.
     fun getMembers(accessToken: String): List<AdminMemberDto>
     fun getSubscriptions(accessToken: String): List<AdminSubscriptionDto>
     fun getClasses(accessToken: String): List<TrainingClassDto>
