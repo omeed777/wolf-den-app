@@ -42,7 +42,15 @@ class DemoRepository(context: Context) : WolfDenRepository {
     }
 
     override fun getMember(): Member {
-        member = member.copy(subscription = member.subscription.copy(remainingSessions = preferences.getInt("admin_sub_m-001_remaining", member.subscription.remainingSessions)))
+        member = member.copy(
+            subscription = member.subscription.copy(
+                plan = preferences.getString("admin_sub_m-001_plan", member.subscription.plan) ?: member.subscription.plan,
+                totalSessions = preferences.getInt("admin_sub_m-001_total", member.subscription.totalSessions),
+                remainingSessions = preferences.getInt("admin_sub_m-001_remaining", member.subscription.remainingSessions),
+                status = if (preferences.getString("admin_sub_m-001_status", "ACTIVE") == "ACTIVE") SubscriptionStatus.ACTIVE else SubscriptionStatus.SUSPENDED,
+                expiresAt = preferences.getString("admin_sub_m-001_expires", member.subscription.expiresAt) ?: member.subscription.expiresAt
+            )
+        )
         loadPersistedAdminClassState()
         return member
     }
@@ -126,6 +134,7 @@ class DemoRepository(context: Context) : WolfDenRepository {
         json.put(obj)
         preferences.edit()
             .putString("admin_bookings", json.toString())
+            .putInt("admin_class_" + booking.classId + "_booked", target.booked)
             .putInt("admin_sub_m-001_remaining", member.subscription.remainingSessions)
             .apply()
     }
@@ -133,14 +142,22 @@ class DemoRepository(context: Context) : WolfDenRepository {
     private fun persistSharedAdminBookingCancellation(bookingId: String) {
         val raw = preferences.getString("admin_bookings", "[]") ?: "[]"
         val json = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+        var classId = -1
         for (i in 0 until json.length()) {
             val o = json.getJSONObject(i)
-            if (o.optString("id") == bookingId) o.put("status", "CANCELLED")
+            if (o.optString("id") == bookingId) {
+                o.put("status", "CANCELLED")
+                classId = o.optInt("classId", -1)
+            }
         }
-        preferences.edit()
+        val editor = preferences.edit()
             .putString("admin_bookings", json.toString())
             .putInt("admin_sub_m-001_remaining", member.subscription.remainingSessions)
-            .apply()
+        if (classId >= 0) {
+            val current = classes.firstOrNull { it.id == classId }?.booked ?: 0
+            editor.putInt("admin_class_" + classId + "_booked", current)
+        }
+        editor.apply()
     }
 
     private fun persistState() {
