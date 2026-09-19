@@ -5,7 +5,9 @@ plugins {
 }
 
 android {
-    val wolfDenApiBaseUrl = providers.gradleProperty("WOLF_DEN_API_BASE_URL").orElse("https://bxqwecsvsaglimedrlsg.supabase.co/functions/v1/wolf-den-api").get()
+    // Keep the APK in local Demo Mode unless a production backend URL is
+    // explicitly supplied at build time with -PWOLF_DEN_API_BASE_URL=...
+    val wolfDenApiBaseUrl = providers.gradleProperty("WOLF_DEN_API_BASE_URL").orElse("").get()
     namespace = "com.wolfden.app"
     compileSdk = 35
 
@@ -33,8 +35,8 @@ android {
         applicationId = "com.wolfden.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
         buildConfigField("String", "WOLF_DEN_API_BASE_URL", "\"$wolfDenApiBaseUrl\"")
     }
 
