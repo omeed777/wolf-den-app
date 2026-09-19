@@ -460,7 +460,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
                     }
                 } catch (e: Exception) { adminMessage = e.message ?: "لغو رزرو انجام نشد." }
             })
-            5 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> try { repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false } catch (e: Exception) { adminMessage = e.message ?: "ثبت حضور انجام نشد." } })
+            5 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, bookings, onSave = { memberId, classId, date, present -> try { repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false } catch (e: Exception) { adminMessage = e.message ?: "ثبت حضور انجام نشد." } })
             else -> {
                 AdminCoachesScreen(
                     Modifier.padding(padding), coaches,
@@ -1163,16 +1163,17 @@ private fun MyBookingsScreen(
                 items(bookings, key = { it.id }) { booking ->
                     val trainingClass = classes.firstOrNull { it.id == booking.classId }
                     if (trainingClass != null) {
-                    Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Text("${trainingClass.day} • ${trainingClass.time}", color = WolfMuted)
-                            Text("مربی: ${trainingClass.coach}", color = WolfMuted)
-                            Spacer(Modifier.height(10.dp))
-                            OutlinedButton(
-                                onClick = { onCancel(trainingClass.id) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) { Text("لغو رزرو") }
+                        Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text("${trainingClass.day} • ${trainingClass.time}", color = WolfMuted)
+                                Text("مربی: ${trainingClass.coach}", color = WolfMuted)
+                                Spacer(Modifier.height(10.dp))
+                                OutlinedButton(
+                                    onClick = { onCancel(trainingClass.id) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("لغو رزرو") }
+                            }
                         }
                     }
                 }
@@ -1234,6 +1235,7 @@ private fun SubscriptionScreen(
                 val statusText = when (status) {
                     SubscriptionStatus.ACTIVE -> "فعال"
                     SubscriptionStatus.SUSPENDED -> "معلق"
+                    SubscriptionStatus.EXPIRED -> "منقضی"
                 }
                 Text("وضعیت: $statusText", color = if (status == SubscriptionStatus.ACTIVE) WolfGoldBright else WolfMuted, fontWeight = FontWeight.Bold)
                 if (status != SubscriptionStatus.ACTIVE) {
