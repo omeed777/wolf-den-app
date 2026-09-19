@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,9 +45,24 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun WolfDenApp() {
-    var loggedIn by rememberSaveable { mutableStateOf(false) }
-    var phone by rememberSaveable { mutableStateOf("") }
+    val context = LocalContext.current
+    val preferences = remember {
+        context.getSharedPreferences("wolf_den_session", android.content.Context.MODE_PRIVATE)
+    }
+    var loggedIn by rememberSaveable { mutableStateOf(preferences.getBoolean("logged_in", false)) }
+    var phone by rememberSaveable { mutableStateOf(preferences.getString("phone", "") ?: "") }
     val viewModel: WolfDenViewModel = viewModel()
+
+    fun login() {
+        preferences.edit().putBoolean("logged_in", true).putString("phone", phone).apply()
+        loggedIn = true
+    }
+
+    fun logout() {
+        preferences.edit().clear().apply()
+        loggedIn = false
+        phone = ""
+    }
 
     MaterialTheme(
         colorScheme = darkColorScheme(
@@ -61,8 +77,8 @@ private fun WolfDenApp() {
         )
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            if (!loggedIn) LoginFlow(phone, { phone = it }) { loggedIn = true }
-            else MainShell(viewModel, onLogout = { loggedIn = false })
+            if (!loggedIn) LoginFlow(phone, { phone = it }, ::login)
+            else MainShell(viewModel, onLogout = ::logout)
         }
     }
 }
@@ -139,6 +155,7 @@ private fun OtpScreen(phone: String, otp: String, onOtpChange: (String) -> Unit,
             shape = RoundedCornerShape(14.dp)
         ) { Text("ورود به Wolf Den", fontSize = 16.sp) }
         TextButton(onClick = onBack) { Text("ویرایش شماره موبایل") }
+        Text("کد تست: ۱۲۳۴۵۶", color = WolfGold, fontSize = 12.sp)
         Text("فعلاً کد فقط از نظر ۶ رقمی بودن بررسی می‌شود.", color = WolfMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
@@ -172,6 +189,9 @@ private fun MainShell(viewModel: WolfDenViewModel, onLogout: () -> Unit) {
                 0 -> HomeScreen(
                     Modifier.padding(padding),
                     uiState.member?.name ?: "عضو Wolf Den",
+                    uiState.member?.subscription?.plan ?: "-",
+                    uiState.member?.subscription?.remainingSessions ?: 0,
+                    uiState.member?.subscription?.totalSessions ?: 0,
                     uiState.bookings.size,
                     onLogout
                 ) { tab = 1 }
@@ -221,6 +241,9 @@ private fun MainShell(viewModel: WolfDenViewModel, onLogout: () -> Unit) {
 private fun HomeScreen(
     modifier: Modifier,
     memberName: String,
+    plan: String,
+    remainingSessions: Int,
+    totalSessions: Int,
     bookingCount: Int,
     onLogout: () -> Unit,
     onClasses: () -> Unit
@@ -236,9 +259,10 @@ private fun HomeScreen(
         }
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = WolfBlack)) {
             Column(Modifier.padding(20.dp)) {
-                Text("اشتراک فعال", color = Color.White)
-                Text("۱۲ جلسه", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                Text("برای مشاهده تعداد جلسات باقی‌مانده وارد بخش اشتراک شوید.", color = Color(0xFFD0D0D0))
+                Text("اشتراک فعال", color = WolfText)
+                Text(plan, color = WolfGold, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("$remainingSessions جلسه", color = WolfText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text("از مجموع $totalSessions جلسه", color = WolfMuted)
             }
         }
         if (bookingCount > 0) Text("رزروهای فعال: $bookingCount جلسه", color = WolfGoldBright, fontWeight = FontWeight.Bold)
@@ -332,7 +356,7 @@ private fun ClassCard(trainingClass: TrainingClass, bookedByMe: Boolean, onBooki
                 Text("${trainingClass.booked} / ${trainingClass.capacity}", fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(12.dp))
-            Text("ظرفیت باقی‌مانده: ${trainingClass.available} نفر", color = if (trainingClass.available > 0) WolfGoldBright else Color.Gray)
+            Text("ظرفیت باقی‌مانده: ${trainingClass.available} نفر", color = if (trainingClass.available > 0) WolfGoldBright else WolfMuted)
             Spacer(Modifier.height(10.dp))
             Button(
                 onClick = onBooking,
