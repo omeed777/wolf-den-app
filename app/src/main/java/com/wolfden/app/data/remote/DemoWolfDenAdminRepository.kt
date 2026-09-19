@@ -34,9 +34,24 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     override fun getCoaches() = coaches
     override fun getBookings() = bookings.filter { it.status == "CONFIRMED" }.toList()
     override fun cancelBooking(bookingId: String): Boolean {
-        val i = bookings.indexOfFirst { it.id == bookingId }
+        val i = bookings.indexOfFirst { it.id == bookingId && it.status == "CONFIRMED" }
         if (i < 0) return false
-        bookings[i] = bookings[i].copy(status = "CANCELLED")
+        val booking = bookings[i]
+        bookings[i] = booking.copy(status = "CANCELLED")
+
+        val classIndex = classes.indexOfFirst { it.id == booking.classId }
+        if (classIndex >= 0) {
+            val cls = classes[classIndex]
+            classes[classIndex] = cls.copy(booked = (cls.booked - 1).coerceAtLeast(0))
+        }
+
+        val subIndex = subscriptions.indexOfFirst { it.memberId == booking.memberId }
+        if (subIndex >= 0) {
+            val sub = subscriptions[subIndex]
+            subscriptions[subIndex] = sub.copy(
+                remainingSessions = (sub.remainingSessions + 1).coerceAtMost(sub.totalSessions)
+            )
+        }
         return true
     }
     override fun getAttendance(date: String) = attendance.filter { it.date == date }.toList()
