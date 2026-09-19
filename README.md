@@ -87,3 +87,8 @@ The Android demo is now functionally wired end-to-end for local testing:
 7. Prepare the iOS client after Android V1 is stable.
 
 Payments remain outside V1.
+
+
+## Release artifacts
+
+GitHub Actions builds both a debug APK and an unsigned release APK/AAB. The release artifacts are intentionally unsigned until the Wolf Den signing key is configured through GitHub Secrets; no private signing key is stored in the repository.
