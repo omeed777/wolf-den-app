@@ -500,6 +500,15 @@ private fun AdminDashboard(onBack: () -> Unit) {
             }
         )
     }
+    adminMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { adminMessage = null },
+            title = { Text("پیام مدیریت") },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { adminMessage = null }) { Text("باشه") } }
+        )
+    }
+
 }
 
 @Composable
@@ -1254,12 +1263,3 @@ private fun WolfBrand(size: androidx.compose.ui.unit.Dp) {
         drawPath(muzzle, color = WolfGold)
     }
 }
-    adminMessage?.let { message ->
-        AlertDialog(
-            onDismissRequest = { adminMessage = null },
-            title = { Text("پیام مدیریت") },
-            text = { Text(message) },
-            confirmButton = { TextButton(onClick = { adminMessage = null }) { Text("باشه") } }
-        )
-    }
-
