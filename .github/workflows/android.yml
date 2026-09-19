@@ -30,6 +30,7 @@ jobs:
         run: |
           keytool -genkeypair -v \
             -keystore "$RUNNER_TEMP/wolf-den-release.jks" \
+            -storetype JKS \
             -storepass "wolfden-test-store" \
             -keypass "wolfden-test-key" \
             -alias "wolf-den" \
