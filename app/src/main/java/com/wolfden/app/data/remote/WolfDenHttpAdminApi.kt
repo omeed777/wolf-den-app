@@ -41,6 +41,26 @@ class WolfDenHttpAdminApi(
     override fun cancelBooking(accessToken: String, bookingId: String): Boolean =
         request("DELETE", config.bookingsPath + "/" + bookingId, token = accessToken).optBoolean("success", true)
 
+    override fun createBooking(accessToken: String, request: AdminCreateBookingRequest): AdminBookingDto =
+        this.request(
+            "POST",
+            config.bookingsPath,
+            JSONObject().put("memberId", request.memberId).put("classId", request.classId),
+            accessToken
+        ).let {
+            AdminBookingDto(
+                it.requiredString("id"),
+                it.requiredString("memberId"),
+                it.requiredString("memberName"),
+                it.getInt("classId"),
+                it.requiredString("classTitle"),
+                it.requiredString("day"),
+                it.requiredString("time"),
+                it.requiredString("status"),
+                it.requiredString("createdAt")
+            )
+        }
+
     override fun getAttendance(accessToken: String, date: String): List<AttendanceDto> =
         request("GET", config.attendancePath + "?date=" + java.net.URLEncoder.encode(date, "UTF-8"), token = accessToken).objects("attendance") { o ->
             AttendanceDto(o.requiredString("id"), o.requiredString("memberId"), o.getInt("classId"), o.requiredString("date"), o.optBoolean("present"))
