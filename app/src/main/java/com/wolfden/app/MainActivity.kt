@@ -391,7 +391,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
             colors = TopAppBarDefaults.topAppBarColors(containerColor = WolfBlack)
         ) },
         bottomBar = { NavigationBar {
-            listOf("اعضا", "اشتراک‌ها", "کلاس‌ها", "حضور", "مربی‌ها").forEachIndexed { i, label ->
+            listOf("داشبورد", "اعضا", "اشتراک‌ها", "کلاس‌ها", "حضور", "مربی‌ها").forEachIndexed { i, label ->
                 NavigationBarItem(selected = tab == i, onClick = { tab = i },
                     icon = { Text(if (i == 0) "●" else if (i == 1) "◆" else "▣") },
                     label = { Text(label) })
@@ -399,7 +399,8 @@ private fun AdminDashboard(onBack: () -> Unit) {
         }}
     ) { padding ->
         when (tab) {
-            0 -> AdminMembersScreen(Modifier.padding(padding), members, onAdd = { showAddMember = true })
+            0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes)
+            1 -> AdminMembersScreen(Modifier.padding(padding), members, onAdd = { showAddMember = true })
             1 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions) { subscription ->
                 val updated = repository.updateSubscription(
                     subscription.memberId,
@@ -408,8 +409,8 @@ private fun AdminDashboard(onBack: () -> Unit) {
                 val index = subscriptions.indexOfFirst { it.id == updated.id }
                 if (index >= 0) subscriptions[index] = updated
             }
-            2 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
-            3 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, true)); showAttendance = false })
+            3 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
+            4 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, true)); showAttendance = false })
             else -> AdminCoachesScreen(Modifier.padding(padding), repository.getCoaches())
         }
     }
@@ -460,6 +461,34 @@ private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDt
         item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("برنامه کلاس‌ها و ظرفیت", color = WolfMuted) }; Button(onClick = onAdd) { Text("کلاس جدید") } } }
         items(classes, key = { it.id }) { trainingClass ->
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(trainingClass.day + " • " + trainingClass.time, color = WolfMuted); Text("مربی: " + trainingClass.coach); Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity, color = WolfGoldBright) } }
+        }
+    }
+}
+
+@Composable
+private fun AdminOverviewScreen(modifier: Modifier, members: List<AdminMemberDto>, subscriptions: List<AdminSubscriptionDto>, classes: List<TrainingClassDto>) {
+    val activeMembers = members.count { it.status == "ACTIVE" }
+    val activeSubscriptions = subscriptions.count { it.status == "ACTIVE" }
+    val lowSessions = subscriptions.count { it.remainingSessions <= 2 }
+    val totalCapacity = classes.sumOf { it.capacity }
+    val booked = classes.sumOf { it.booked }
+    Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("داشبورد مدیریت", fontSize = 28.sp, fontWeight = FontWeight.Black)
+        Text("نمای کلی وضعیت Wolf Den", color = WolfMuted)
+        AdminStatCard("کل اعضا", members.size.toString())
+        AdminStatCard("اعضای فعال", activeMembers.toString())
+        AdminStatCard("اشتراک فعال", activeSubscriptions.toString())
+        AdminStatCard("اشتراک با جلسات کم", lowSessions.toString())
+        AdminStatCard("رزرو کلاس‌ها", "$booked / $totalCapacity")
+    }
+}
+
+@Composable
+private fun AdminStatCard(title: String, value: String) {
+    Card(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(title, fontWeight = FontWeight.Bold)
+            Text(value, fontSize = 24.sp, fontWeight = FontWeight.Black, color = WolfGoldBright)
         }
     }
 }
