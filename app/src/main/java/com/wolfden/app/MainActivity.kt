@@ -400,7 +400,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
     ) { padding ->
         when (tab) {
             0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes)
-            1 -> AdminMembersScreen(Modifier.padding(padding), members, onAdd = { showAddMember = true })
+            1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true })
             1 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions) { subscription ->
                 val updated = repository.updateSubscription(
                     subscription.memberId,
@@ -436,12 +436,68 @@ private fun AdminDashboard(onBack: () -> Unit) {
 }
 
 @Composable
-private fun AdminMembersScreen(modifier: Modifier, members: List<AdminMemberDto>, onAdd: () -> Unit) {
+private fun AdminMembersScreen(
+    modifier: Modifier,
+    members: List<AdminMemberDto>,
+    subscriptions: List<AdminSubscriptionDto>,
+    onAdd: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    val filtered = members.filter { it.name.contains(query, ignoreCase = true) || it.phone.contains(query) }
+
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("اعضای باشگاه", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("مدیریت اعضای Wolf Den", color = WolfMuted) }; Button(onClick = onAdd) { Text("عضو جدید") } } }
-        items(members, key = { it.id }) { member ->
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(member.name, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(member.phone, color = WolfMuted); Text("وضعیت: " + member.status, color = WolfGoldBright) } }
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("اعضای باشگاه", fontSize = 28.sp, fontWeight = FontWeight.Black)
+                    Text("مدیریت اعضای Wolf Den", color = WolfMuted)
+                }
+                Button(onClick = onAdd) { Text("عضو جدید") }
+            }
         }
+        item {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("جستجو نام یا موبایل") },
+                singleLine = true
+            )
+        }
+        items(filtered, key = { it.id }) { member ->
+            val sub = subscriptions.firstOrNull { it.memberId == member.id }
+            Card(Modifier.fillMaxWidth().clickable { selectedId = member.id }, RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(member.name, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(member.phone, color = WolfMuted)
+                    Text("وضعیت: " + member.status, color = WolfGoldBright)
+                    Text(if (sub != null) sub.plan + " • " + sub.remainingSessions + " جلسه باقی‌مانده" else "بدون اشتراک", color = WolfMuted)
+                }
+            }
+        }
+    }
+
+    val selected = members.firstOrNull { it.id == selectedId }
+    if (selected != null) {
+        val sub = subscriptions.firstOrNull { it.memberId == selected.id }
+        AlertDialog(
+            onDismissRequest = { selectedId = null },
+            confirmButton = { TextButton(onClick = { selectedId = null }) { Text("بستن") } },
+            title = { Text(selected.name) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("موبایل: " + selected.phone)
+                    Text("وضعیت: " + selected.status)
+                    Text("اشتراک: " + (sub?.plan ?: "ندارد"))
+                    if (sub != null) {
+                        Text("جلسات: " + sub.remainingSessions + " از " + sub.totalSessions)
+                        Text("انقضا: " + sub.expiresAt)
+                        Text("وضعیت اشتراک: " + sub.status)
+                    }
+                }
+            }
+        )
     }
 }
 
