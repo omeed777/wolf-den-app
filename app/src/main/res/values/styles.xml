@@ -2,6 +2,7 @@
 <resources>
     <style name="Theme.WolfDen" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
+        <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:colorAccent">#FFD700</item>
         <item name="android:windowBackground">#080808</item>
@@ -9,7 +10,5 @@
         <item name="android:statusBarColor">#080808</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:windowSplashScreenBackground">#080808</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_wolf_den</item>
     </style>
 </resources>
