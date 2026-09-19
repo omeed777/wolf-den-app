@@ -414,7 +414,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
                 if (index >= 0) subscriptions[index] = updated
             }
             3 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
-            4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onAdd = { showAddBooking = true }, onCancel = { bookingId -> if (repository.cancelBooking(bookingId)) bookings.removeAll { it.id == bookingId } })
+            4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onAdd = { showAddBooking = true }, onCancel = { bookingId ->\n                val booking = bookings.firstOrNull { it.id == bookingId }\n                if (booking != null && repository.cancelBooking(bookingId)) {\n                    bookings.removeAll { it.id == bookingId }\n                    val classIndex = classes.indexOfFirst { it.id == booking.classId }\n                    if (classIndex >= 0) classes[classIndex] = classes[classIndex].copy(booked = (classes[classIndex].booked - 1).coerceAtLeast(0))\n                    val subIndex = subscriptions.indexOfFirst { it.memberId == booking.memberId }\n                    if (subIndex >= 0) subscriptions[subIndex] = subscriptions[subIndex].copy(remainingSessions = (subscriptions[subIndex].remainingSessions + 1).coerceAtMost(subscriptions[subIndex].totalSessions))\n                }\n            })
             5 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false })
             else -> AdminCoachesScreen(Modifier.padding(padding), repository.getCoaches())
         }
