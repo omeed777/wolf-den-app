@@ -405,16 +405,25 @@ private fun AdminDashboard(onBack: () -> Unit) {
         when (tab) {
             0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes)
             1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true })
-            2 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions) { subscription ->
+            2 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions, members, onRenew = { subscription ->
                 val updated = repository.updateSubscription(
                     subscription.memberId,
                     UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.totalSessions, "ACTIVE", subscription.expiresAt)
                 )
                 val index = subscriptions.indexOfFirst { it.id == updated.id }
                 if (index >= 0) subscriptions[index] = updated
-            }
+            }, onUpdate = { subscription ->
+                val updated = repository.updateSubscription(
+                    subscription.memberId,
+                    UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.remainingSessions, subscription.status, subscription.expiresAt)
+                )
+                val index = subscriptions.indexOfFirst { it.id == updated.id }
+                if (index >= 0) subscriptions[index] = updated
+            })
             3 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
-            4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onAdd = { showAddBooking = true }, onCancel = { bookingId ->\n                val booking = bookings.firstOrNull { it.id == bookingId }\n                if (booking != null && repository.cancelBooking(bookingId)) {\n                    bookings.removeAll { it.id == bookingId }\n                    val classIndex = classes.indexOfFirst { it.id == booking.classId }\n                    if (classIndex >= 0) classes[classIndex] = classes[classIndex].copy(booked = (classes[classIndex].booked - 1).coerceAtLeast(0))\n                    val subIndex = subscriptions.indexOfFirst { it.memberId == booking.memberId }\n                    if (subIndex >= 0) subscriptions[subIndex] = subscriptions[subIndex].copy(remainingSessions = (subscriptions[subIndex].remainingSessions + 1).coerceAtMost(subscriptions[subIndex].totalSessions))\n                }\n            })
+            4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onAdd = { showAddBooking = true }, onCancel = { bookingId ->
+                val booking = bookings.firstOrNull { it.id == bookingId }\n                if (booking != null && repository.cancelBooking(bookingId)) {\n                    bookings.removeAll { it.id == bookingId }\n                    val classIndex = classes.indexOfFirst { it.id == booking.classId }\n                    if (classIndex >= 0) classes[classIndex] = classes[classIndex].copy(booked = (classes[classIndex].booked - 1).coerceAtLeast(0))\n                    val subIndex = subscriptions.indexOfFirst { it.memberId == booking.memberId }\n                    if (subIndex >= 0) subscriptions[subIndex] = subscriptions[subIndex].copy(remainingSessions = (subscriptions[subIndex].remainingSessions + 1).coerceAtMost(subscriptions[subIndex].totalSessions))\n                }
+            })
             5 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false })
             else -> AdminCoachesScreen(Modifier.padding(padding), repository.getCoaches())
         }
@@ -526,12 +535,68 @@ private fun AdminMembersScreen(
 }
 
 @Composable
-private fun AdminSubscriptionsScreen(modifier: Modifier, subscriptions: List<AdminSubscriptionDto>, onRenew: (AdminSubscriptionDto) -> Unit) {
+private fun AdminSubscriptionsScreen(
+    modifier: Modifier,
+    subscriptions: List<AdminSubscriptionDto>,
+    members: List<AdminMemberDto>,
+    onRenew: (AdminSubscriptionDto) -> Unit,
+    onUpdate: (AdminSubscriptionDto) -> Unit
+) {
+    var selected by remember { mutableStateOf<AdminSubscriptionDto?>(null) }
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("اشتراک‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("وضعیت و جلسات باقی‌مانده اعضا", color = WolfMuted) }
-        items(subscriptions, key = { it.id }) { subscription ->
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(subscription.plan, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text("عضو: " + subscription.memberId, color = WolfMuted); Text("جلسات: " + subscription.remainingSessions + " از " + subscription.totalSessions); Text("انقضا: " + subscription.expiresAt, color = WolfMuted); Text("وضعیت: " + subscription.status, color = WolfGoldBright) } }
+        item {
+            Text("اشتراک‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black)
+            Text("مدیریت پلن، جلسات و تاریخ انقضا", color = WolfMuted)
         }
+        items(subscriptions, key = { it.id }) { subscription ->
+            val member = members.firstOrNull { it.id == subscription.memberId }
+            Card(Modifier.fillMaxWidth().clickable { selected = subscription }, RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(member?.name ?: subscription.memberId, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(subscription.plan)
+                    Text("جلسات: ${subscription.remainingSessions} از ${subscription.totalSessions}")
+                    Text("انقضا: ${subscription.expiresAt}", color = WolfMuted)
+                    Text("وضعیت: ${subscription.status}", color = WolfGoldBright)
+                }
+            }
+        }
+    }
+    selected?.let { sub ->
+        var plan by remember(sub.id) { mutableStateOf(sub.plan) }
+        var total by remember(sub.id) { mutableStateOf(sub.totalSessions.toString()) }
+        var remaining by remember(sub.id) { mutableStateOf(sub.remainingSessions.toString()) }
+        var expires by remember(sub.id) { mutableStateOf(sub.expiresAt) }
+        AlertDialog(
+            onDismissRequest = { selected = null },
+            title = { Text("ویرایش اشتراک") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("عضو: " + (members.firstOrNull { it.id == sub.memberId }?.name ?: sub.memberId))
+                    OutlinedTextField(plan, { plan = it }, label = { Text("پلن") }, singleLine = true)
+                    OutlinedTextField(total, { total = it.filter(Char::isDigit) }, label = { Text("کل جلسات") }, singleLine = true)
+                    OutlinedTextField(remaining, { remaining = it.filter(Char::isDigit) }, label = { Text("جلسات باقی‌مانده") }, singleLine = true)
+                    OutlinedTextField(expires, { expires = it }, label = { Text("تاریخ انقضا") }, singleLine = true)
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    onUpdate(sub.copy(
+                        plan = plan,
+                        totalSessions = total.toIntOrNull()?.coerceAtLeast(1) ?: sub.totalSessions,
+                        remainingSessions = remaining.toIntOrNull()?.coerceAtLeast(0) ?: sub.remainingSessions,
+                        expiresAt = expires,
+                        status = "ACTIVE"
+                    ))
+                    selected = null
+                }) { Text("ذخیره") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { onRenew(sub); selected = null }) { Text("تمدید") }
+                    TextButton(onClick = { selected = null }) { Text("انصراف") }
+                }
+            }
+        )
     }
 }
 
