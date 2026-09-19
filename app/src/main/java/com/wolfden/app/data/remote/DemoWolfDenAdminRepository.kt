@@ -267,28 +267,60 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     override fun updateMember(memberId: String, request: UpdateMemberRequest): AdminMemberDto {
         val index = members.indexOfFirst { it.id == memberId }
         if (index < 0) throw IllegalArgumentException("عضو پیدا نشد.")
+        validateMemberInput(request.name, request.phone, memberId)
         val current = members[index]
-        val updated = current.copy(name = request.name.trim(), phone = request.phone.trim(), status = request.status)
+        val updated = current.copy(name = request.name.trim(), phone = normalizePhone(request.phone), status = request.status)
         members[index] = updated
         persistMembers()
         return updated
     }
 
     override fun createMember(request: CreateMemberRequest): AdminMemberDto {
-        val member = AdminMemberDto("m-" + (members.size + 1), request.name, request.phone, "ACTIVE")
+        validateMemberInput(request.name, request.phone)
+        val member = AdminMemberDto("m-" + nextNumericId(members.map { it.id }, "m-"), request.name.trim(), normalizePhone(request.phone), "ACTIVE")
         members += member
         persistMembers()
         return member
     }
     override fun updateSubscription(memberId: String, request: UpdateSubscriptionRequest): AdminSubscriptionDto {
+        if (members.none { it.id == memberId }) throw IllegalArgumentException("عضو پیدا نشد.")
+        validateSubscriptionInput(request)
         val index = subscriptions.indexOfFirst { it.memberId == memberId }
-        val id = if (index >= 0) subscriptions[index].id else "s-" + (subscriptions.size + 1)
+        val id = if (index >= 0) subscriptions[index].id else "s-" + nextNumericId(subscriptions.map { it.id }, "s-")
         val result = AdminSubscriptionDto(id, memberId, request.plan, request.totalSessions, request.remainingSessions, request.status, request.expiresAt)
         if (index >= 0) subscriptions[index] = result else subscriptions += result
         persistSharedState()
         return result
     }
+    private fun validateMemberInput(name: String, phone: String, exceptMemberId: String? = null) {
+        if (name.trim().length < 2) throw IllegalArgumentException("نام عضو باید حداقل ۲ کاراکتر باشد.")
+        val normalized = normalizePhone(phone)
+        if (!Regex("^09\\d{9}$").matches(normalized)) throw IllegalArgumentException("شماره موبایل باید ۱۱ رقم و با 09 شروع شود.")
+        if (members.any { it.id != exceptMemberId && normalizePhone(it.phone) == normalized }) throw IllegalArgumentException("این شماره موبایل قبلاً ثبت شده است.")
+    }
+
+    private fun normalizePhone(phone: String): String = phone.trim().replace(" ", "")
+
+    private fun validateSubscriptionInput(request: UpdateSubscriptionRequest) {
+        if (request.plan.trim().isEmpty()) throw IllegalArgumentException("نوع اشتراک را وارد کنید.")
+        if (request.totalSessions <= 0) throw IllegalArgumentException("تعداد کل جلسات باید بیشتر از صفر باشد.")
+        if (request.remainingSessions < 0 || request.remainingSessions > request.totalSessions) throw IllegalArgumentException("جلسات باقی‌مانده باید بین صفر و تعداد کل جلسات باشد.")
+        if (!Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(request.expiresAt.trim())) throw IllegalArgumentException("تاریخ انقضا باید به شکل YYYY-MM-DD باشد.")
+        try { java.time.LocalDate.parse(request.expiresAt.trim()) } catch (_: Exception) { throw IllegalArgumentException("تاریخ انقضا معتبر نیست.") }
+    }
+
+    private fun validateClassInput(title: String, day: String, time: String, capacity: Int) {
+        if (title.trim().isEmpty()) throw IllegalArgumentException("عنوان کلاس را وارد کنید.")
+        if (day.trim().isEmpty()) throw IllegalArgumentException("روز کلاس را وارد کنید.")
+        if (!Regex("^([01]\\d|2[0-3]):[0-5]\\d$").matches(time.trim())) throw IllegalArgumentException("ساعت باید به شکل HH:MM باشد.")
+        if (capacity <= 0) throw IllegalArgumentException("ظرفیت باید بیشتر از صفر باشد.")
+    }
+
+    private fun nextNumericId(ids: List<String>, prefix: String): Int =
+        (ids.mapNotNull { it.removePrefix(prefix).toIntOrNull() }.maxOrNull() ?: 0) + 1
+
     override fun createClass(request: CreateClassRequest): TrainingClassDto {
+        validateClassInput(request.title, request.day, request.time, request.capacity)
         val coachName = coaches.firstOrNull { it.id == request.coachId }?.name ?: throw IllegalArgumentException("مربی پیدا نشد.")
         val nextId = (classes.maxOfOrNull { it.id } ?: 0) + 1
         val result = TrainingClassDto(nextId, request.title.trim(), request.day.trim(), request.time.trim(), request.capacity, 0, coachName)
@@ -300,6 +332,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         val index = classes.indexOfFirst { it.id == classId }
         if (index < 0) throw IllegalArgumentException("کلاس پیدا نشد.")
         val current = classes[index]
+        validateClassInput(request.title, request.day, request.time, request.capacity)
         if (request.capacity < current.booked) throw IllegalStateException("ظرفیت جدید نمی‌تواند کمتر از تعداد رزروهای فعلی باشد.")
         val coachName = coaches.firstOrNull { it.id == request.coachId }?.name ?: throw IllegalArgumentException("مربی پیدا نشد.")
         val updated = current.copy(title = request.title.trim(), day = request.day.trim(), time = request.time.trim(), capacity = request.capacity, coach = coachName)
