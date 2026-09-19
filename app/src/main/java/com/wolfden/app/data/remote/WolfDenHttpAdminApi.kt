@@ -127,6 +127,7 @@ class WolfDenHttpAdminApi(
             connection.requestMethod = method
             connection.connectTimeout = 15_000
             connection.readTimeout = 15_000
+            connection.setRequestProperty("Accept-Charset", "utf-8")
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("Authorization", "Bearer $token")
             if (body != null) {
@@ -137,7 +138,7 @@ class WolfDenHttpAdminApi(
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (status !in 200..299) throw IOException("Wolf Den Admin API returned HTTP $status: $response")
+            if (status !in 200..299) throw IOException(adminApiError(status, response))
             return if (response.isBlank()) JSONObject() else JSONObject(response)
         } finally {
             connection.disconnect()
@@ -164,4 +165,14 @@ data class WolfDenAdminApiConfig(
 ) {
     init { require(baseUrl.isNotBlank()) { "Admin API baseUrl must not be blank" } }
     fun url(path: String): String = baseUrl.trimEnd('/') + "/" + path.trimStart('/')
+}
+
+private fun adminApiError(status: Int, response: String): String {
+    return try {
+        val json = JSONObject(response)
+        json.optString("message").takeIf { it.isNotBlank() }?.let { "Wolf Den Admin API error ($status): $it" }
+            ?: "Wolf Den Admin API error ($status)"
+    } catch (_: Exception) {
+        "Wolf Den Admin API error ($status)"
+    }
 }
