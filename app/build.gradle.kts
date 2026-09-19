@@ -14,9 +14,15 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        // Empty by default: the app stays in Demo Mode until a real backend is configured.
+        buildConfigField("String", "WOLF_DEN_API_BASE_URL", "\"\"\"")
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
