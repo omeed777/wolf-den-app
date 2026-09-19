@@ -174,6 +174,26 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         classes += result
         return result
     }
+    override fun updateClass(classId: Int, request: UpdateClassRequest): TrainingClassDto {
+        val index = classes.indexOfFirst { it.id == classId }
+        if (index < 0) throw IllegalArgumentException("کلاس پیدا نشد.")
+        val current = classes[index]
+        if (request.capacity < current.booked) throw IllegalStateException("ظرفیت جدید نمی‌تواند کمتر از تعداد رزروهای فعلی باشد.")
+        val updated = current.copy(title = request.title.trim(), day = request.day.trim(), time = request.time.trim(), capacity = request.capacity, coach = request.coachId)
+        classes[index] = updated
+        persistSharedState()
+        return updated
+    }
+
+    override fun deleteClass(classId: Int): Boolean {
+        if (bookings.any { it.classId == classId && it.status == "CONFIRMED" }) {
+            throw IllegalStateException("کلاسی که رزرو فعال دارد قابل حذف نیست.")
+        }
+        val removed = classes.removeAll { it.id == classId }
+        if (removed) persistSharedState()
+        return removed
+    }
+
     override fun recordAttendance(request: RecordAttendanceRequest): AttendanceDto {
         val existing = attendance.indexOfFirst {
             it.memberId == request.memberId && it.classId == request.classId && it.date == request.date
