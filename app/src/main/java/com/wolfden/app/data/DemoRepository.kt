@@ -9,6 +9,7 @@ import com.wolfden.app.model.SubscriptionStatus
 import com.wolfden.app.model.TrainingClass
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.LocalDate
 
 class DemoRepository(context: Context) : WolfDenRepository {
     private val preferences = context.applicationContext.getSharedPreferences(
@@ -43,6 +44,7 @@ class DemoRepository(context: Context) : WolfDenRepository {
     }
 
     override fun getMember(): Member {
+        loadPersistedAdminMember()
         member = member.copy(
             subscription = member.subscription.copy(
                 plan = preferences.getString("admin_sub_m-001_plan", member.subscription.plan) ?: member.subscription.plan,
@@ -68,7 +70,9 @@ class DemoRepository(context: Context) : WolfDenRepository {
 
     override fun bookClass(classId: Int): Boolean {
         val target = classes.firstOrNull { it.id == classId } ?: return false
+        loadPersistedAdminMember()
         if (member.subscription.status != SubscriptionStatus.ACTIVE) return false
+        if (isExpired(member.subscription.expiresAt)) return false
         if (target.available <= 0) return false
         if (bookings.any { it.classId == classId && it.status == BookingStatus.CONFIRMED }) return false
         if (member.subscription.remainingSessions <= 0) return false
@@ -117,6 +121,36 @@ class DemoRepository(context: Context) : WolfDenRepository {
         persistState()
         persistSharedAdminBookingCancellation(booking.id)
         return true
+    }
+
+    private fun loadPersistedAdminMember() {
+        val raw = preferences.getString("admin_members", null) ?: return
+        try {
+            val json = JSONArray(raw)
+            for (i in 0 until json.length()) {
+                val o = json.getJSONObject(i)
+                if (o.optString("id") == "m-001") {
+                    member = member.copy(
+                        name = o.optString("name", member.name),
+                        phone = o.optString("phone", member.phone)
+                    )
+                    if (o.optString("status", "ACTIVE") != "ACTIVE") {
+                        member = member.copy(subscription = member.subscription.copy(status = SubscriptionStatus.SUSPENDED))
+                    }
+                    break
+                }
+            }
+        } catch (_: Exception) {
+            // Keep the last valid local member state if shared demo data is malformed.
+        }
+    }
+
+    private fun isExpired(expiresAt: String): Boolean {
+        return try {
+            LocalDate.parse(expiresAt).isBefore(LocalDate.now())
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun persistSharedAdminBooking(booking: Booking, target: TrainingClass) {
