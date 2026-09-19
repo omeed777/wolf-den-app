@@ -41,9 +41,16 @@ class DemoRepository(context: Context) : WolfDenRepository {
         loadPersistedState()
     }
 
-    override fun getMember(): Member = member
+    override fun getMember(): Member {
+        member = member.copy(subscription = member.subscription.copy(remainingSessions = preferences.getInt("admin_m001_remaining", member.subscription.remainingSessions)))
+        loadPersistedAdminClassState()
+        return member
+    }
 
-    override fun getClasses(): List<TrainingClass> = classes.toList()
+    override fun getClasses(): List<TrainingClass> {
+        loadPersistedAdminClassState()
+        return classes.toList()
+    }
 
     override fun getMyBookings(): List<Booking> =
         bookings.filter { it.status == BookingStatus.CONFIRMED }
