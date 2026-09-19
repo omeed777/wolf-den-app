@@ -32,39 +32,65 @@ class WolfDenViewModel(
     }
 
     fun refresh() {
-        _uiState.value = WolfDenUiState(
-            member = repository.getMember(),
-            classes = repository.getClasses(),
-            bookings = repository.getMyBookings(),
-            isLoading = false
-        )
+        _uiState.value = _uiState.value.copy(isLoading = true, message = null)
+        try {
+            _uiState.value = WolfDenUiState(
+                member = repository.getMember(),
+                classes = repository.getClasses(),
+                bookings = repository.getMyBookings(),
+                isLoading = false
+            )
+        } catch (error: Exception) {
+            _uiState.value = WolfDenUiState(
+                isLoading = false,
+                message = error.userMessage()
+            )
+        }
     }
 
     fun bookClass(classId: Int) {
-        val success = repository.bookClass(classId)
-        refreshWithMessage(
-            if (success) "کلاس با موفقیت رزرو شد." else "رزرو کلاس انجام نشد."
-        )
+        runAction(
+            successMessage = "کلاس با موفقیت رزرو شد.",
+            failureMessage = "رزرو کلاس انجام نشد."
+        ) {
+            repository.bookClass(classId)
+        }
     }
 
     fun cancelBooking(classId: Int) {
-        val success = repository.cancelBooking(classId)
-        refreshWithMessage(
-            if (success) "رزرو کلاس لغو شد." else "رزرو فعالی برای این کلاس پیدا نشد."
-        )
+        runAction(
+            successMessage = "رزرو کلاس لغو شد.",
+            failureMessage = "رزرو فعالی برای این کلاس پیدا نشد."
+        ) {
+            repository.cancelBooking(classId)
+        }
     }
 
     fun clearMessage() {
         _uiState.value = _uiState.value.copy(message = null)
     }
 
-    private fun refreshWithMessage(message: String) {
-        _uiState.value = WolfDenUiState(
-            member = repository.getMember(),
-            classes = repository.getClasses(),
-            bookings = repository.getMyBookings(),
-            isLoading = false,
-            message = message
-        )
+    private fun runAction(
+        successMessage: String,
+        failureMessage: String,
+        action: () -> Boolean
+    ) {
+        try {
+            val success = action()
+            refresh()
+            _uiState.value = _uiState.value.copy(
+                message = if (success) successMessage else failureMessage
+            )
+        } catch (error: Exception) {
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                message = error.userMessage()
+            )
+        }
     }
+
+    private fun Exception.userMessage(): String =
+        message?.takeIf { it.isNotBlank() }?.let {
+            if (it.length <= 140) it else it.take(137) + "..."
+        } ?: "خطایی رخ داد. دوباره تلاش کنید."
 }
