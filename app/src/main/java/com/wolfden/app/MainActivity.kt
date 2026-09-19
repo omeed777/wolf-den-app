@@ -404,7 +404,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
     ) { padding ->
         when (tab) {
             0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes)
-            1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true })
+            1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true }, onEditSubscription = { subscription -> tab = 2 })
             2 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions, members, onRenew = { subscription ->
                 val updated = repository.updateSubscription(
                     subscription.memberId,
@@ -473,7 +473,8 @@ private fun AdminMembersScreen(
     modifier: Modifier,
     members: List<AdminMemberDto>,
     subscriptions: List<AdminSubscriptionDto>,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    onEditSubscription: (AdminSubscriptionDto) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var selectedId by remember { mutableStateOf<String?>(null) }
@@ -484,7 +485,7 @@ private fun AdminMembersScreen(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("اعضای باشگاه", fontSize = 28.sp, fontWeight = FontWeight.Black)
-                    Text("مدیریت اعضای Wolf Den", color = WolfMuted)
+                    Text("جستجو و مدیریت سریع اعضا", color = WolfMuted)
                 }
                 Button(onClick = onAdd) { Text("عضو جدید") }
             }
@@ -501,14 +502,16 @@ private fun AdminMembersScreen(
         items(filtered, key = { it.id }) { member ->
             val sub = subscriptions.firstOrNull { it.memberId == member.id }
             Card(Modifier.fillMaxWidth().clickable { selectedId = member.id }, RoundedCornerShape(18.dp)) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(member.name, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(member.phone, color = WolfMuted)
                     Text("وضعیت: " + member.status, color = WolfGoldBright)
                     Text(if (sub != null) sub.plan + " • " + sub.remainingSessions + " جلسه باقی‌مانده" else "بدون اشتراک", color = WolfMuted)
+                    Text("برای مشاهده جزئیات ضربه بزنید", color = WolfGold, fontSize = 12.sp)
                 }
             }
         }
+        if (filtered.isEmpty()) item { Text("عضوی پیدا نشد.", color = WolfMuted) }
     }
 
     val selected = members.firstOrNull { it.id == selectedId }
@@ -516,20 +519,29 @@ private fun AdminMembersScreen(
         val sub = subscriptions.firstOrNull { it.memberId == selected.id }
         AlertDialog(
             onDismissRequest = { selectedId = null },
-            confirmButton = { TextButton(onClick = { selectedId = null }) { Text("بستن") } },
             title = { Text(selected.name) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text("موبایل: " + selected.phone)
-                    Text("وضعیت: " + selected.status)
-                    Text("اشتراک: " + (sub?.plan ?: "ندارد"))
+                    Text("وضعیت عضو: " + selected.status)
+                    HorizontalDivider()
+                    Text("اشتراک", fontWeight = FontWeight.Bold, color = WolfGoldBright)
                     if (sub != null) {
+                        Text("پلن: " + sub.plan)
                         Text("جلسات: " + sub.remainingSessions + " از " + sub.totalSessions)
                         Text("انقضا: " + sub.expiresAt)
                         Text("وضعیت اشتراک: " + sub.status)
+                    } else {
+                        Text("این عضو اشتراک ندارد.", color = WolfMuted)
                     }
                 }
-            }
+            },
+            confirmButton = {
+                if (sub != null) {
+                    Button(onClick = { onEditSubscription(sub); selectedId = null }) { Text("مدیریت اشتراک") }
+                }
+            },
+            dismissButton = { TextButton(onClick = { selectedId = null }) { Text("بستن") } }
         )
     }
 }
