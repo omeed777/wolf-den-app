@@ -42,7 +42,7 @@ class DemoRepository(context: Context) : WolfDenRepository {
     }
 
     override fun getMember(): Member {
-        member = member.copy(subscription = member.subscription.copy(remainingSessions = preferences.getInt("admin_m001_remaining", member.subscription.remainingSessions)))
+        member = member.copy(subscription = member.subscription.copy(remainingSessions = preferences.getInt("admin_sub_m-001_remaining", member.subscription.remainingSessions)))
         loadPersistedAdminClassState()
         return member
     }
@@ -110,7 +110,7 @@ class DemoRepository(context: Context) : WolfDenRepository {
         return true
     }
 
-    private fun persistSharedAdminBookingCancellation(booking: Booking, target: TrainingClass) {
+    private fun persistSharedAdminBooking(booking: Booking, target: TrainingClass) {
         val raw = preferences.getString("admin_bookings", "[]") ?: "[]"
         val json = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
         val obj = org.json.JSONObject()
@@ -151,6 +151,7 @@ class DemoRepository(context: Context) : WolfDenRepository {
 
         preferences.edit()
             .putInt("remaining_sessions", member.subscription.remainingSessions)
+            .putInt("admin_sub_m-001_remaining", member.subscription.remainingSessions)
             .putString("booked_class_ids", confirmedBookings.toString())
             .apply()
     }
