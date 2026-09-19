@@ -191,6 +191,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
             ?: throw IllegalArgumentException("عضو پیدا نشد.")
         if (member.status != "ACTIVE") throw IllegalStateException("این عضو فعال نیست و امکان رزرو ندارد.")
         if (sub.status != "ACTIVE" || sub.remainingSessions <= 0) throw IllegalStateException("جلسه قابل استفاده ندارد.")
+        if (isExpired(sub.expiresAt)) throw IllegalStateException("اشتراک این عضو منقضی شده است.")
 
         classes[classIndex] = cls.copy(booked = cls.booked + 1)
         subscriptions[subIndex] = sub.copy(remainingSessions = sub.remainingSessions - 1)
@@ -309,6 +310,26 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         try { java.time.LocalDate.parse(request.expiresAt.trim()) } catch (_: Exception) { throw IllegalArgumentException("تاریخ انقضا معتبر نیست.") }
     }
 
+    private fun validateDate(value: String) {
+        val date = value.trim()
+        if (!Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(date)) {
+            throw IllegalArgumentException("تاریخ باید به شکل YYYY-MM-DD باشد.")
+        }
+        try {
+            java.time.LocalDate.parse(date)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("تاریخ معتبر نیست.")
+        }
+    }
+
+    private fun isExpired(expiresAt: String): Boolean {
+        return try {
+            java.time.LocalDate.parse(expiresAt).isBefore(java.time.LocalDate.now())
+        } catch (_: Exception) {
+            true
+        }
+    }
+
     private fun validateClassInput(title: String, day: String, time: String, capacity: Int) {
         if (title.trim().isEmpty()) throw IllegalArgumentException("عنوان کلاس را وارد کنید.")
         if (day.trim().isEmpty()) throw IllegalArgumentException("روز کلاس را وارد کنید.")
@@ -318,6 +339,60 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
 
     private fun nextNumericId(ids: List<String>, prefix: String): Int =
         (ids.mapNotNull { it.removePrefix(prefix).toIntOrNull() }.maxOrNull() ?: 0) + 1
+
+    private fun validateCoachInput(name: String, phone: String, exceptCoachId: String? = null) {
+        if (name.trim().length < 2) throw IllegalArgumentException("نام مربی باید حداقل ۲ کاراکتر باشد.")
+        val normalized = normalizePhone(phone)
+        if (!Regex("^09\\d{9}$").matches(normalized)) throw IllegalArgumentException("شماره موبایل مربی باید ۱۱ رقم و با 09 شروع شود.")
+        if (coaches.any { it.id != exceptCoachId && normalizePhone(it.phone) == normalized }) {
+            throw IllegalArgumentException("این شماره موبایل قبلاً برای مربی دیگری ثبت شده است.")
+        }
+    }
+
+    override fun createCoach(request: CreateCoachRequest): CoachDto {
+        validateCoachInput(request.name, request.phone)
+        if (coaches.any { it.name.trim().equals(request.name.trim(), ignoreCase = true) }) {
+            throw IllegalArgumentException("این نام مربی قبلاً ثبت شده است.")
+        }
+        val coach = CoachDto(
+            "c-" + nextNumericId(coaches.map { it.id }, "c-"),
+            request.name.trim(),
+            normalizePhone(request.phone)
+        )
+        coaches += coach
+        persistCoaches()
+        return coach
+    }
+
+    override fun updateCoach(coachId: String, request: UpdateCoachRequest): CoachDto {
+        val index = coaches.indexOfFirst { it.id == coachId }
+        if (index < 0) throw IllegalArgumentException("مربی پیدا نشد.")
+        validateCoachInput(request.name, request.phone, coachId)
+        if (coaches.any { it.id != coachId && it.name.trim().equals(request.name.trim(), ignoreCase = true) }) {
+            throw IllegalArgumentException("این نام مربی قبلاً ثبت شده است.")
+        }
+        val current = coaches[index]
+        val updated = current.copy(name = request.name.trim(), phone = normalizePhone(request.phone))
+        coaches[index] = updated
+        for (i in classes.indices) {
+            if (classes[i].coach == current.name) {
+                classes[i] = classes[i].copy(coach = updated.name)
+            }
+        }
+        persistCoaches()
+        persistSharedState()
+        return updated
+    }
+
+    override fun deleteCoach(coachId: String): Boolean {
+        val coach = coaches.firstOrNull { it.id == coachId } ?: return false
+        if (classes.any { it.coach == coach.name }) {
+            throw IllegalStateException("مربی به یک یا چند کلاس اختصاص داده شده و قابل حذف نیست.")
+        }
+        coaches.removeAll { it.id == coachId }
+        persistCoaches()
+        return true
+    }
 
     override fun createClass(request: CreateClassRequest): TrainingClassDto {
         validateClassInput(request.title, request.day, request.time, request.capacity)
@@ -351,6 +426,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     }
 
     override fun recordAttendance(request: RecordAttendanceRequest): AttendanceDto {
+        validateDate(request.date)
         if (members.none { it.id == request.memberId }) throw IllegalArgumentException("عضو پیدا نشد.")
         if (classes.none { it.id == request.classId }) throw IllegalArgumentException("کلاس پیدا نشد.")
         if (!bookings.any { it.memberId == request.memberId && it.classId == request.classId && it.status == "CONFIRMED" }) {
