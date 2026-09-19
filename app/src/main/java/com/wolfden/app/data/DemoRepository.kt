@@ -16,7 +16,7 @@ class DemoRepository(context: Context) : WolfDenRepository {
     )
 
     private var member = Member(
-        id = "demo-member",
+        id = "m-001",
         name = "عضو Wolf Den",
         phone = preferences.getString("phone", "09123456789") ?: "09123456789",
         subscription = Subscription(
@@ -52,8 +52,10 @@ class DemoRepository(context: Context) : WolfDenRepository {
         return classes.toList()
     }
 
-    override fun getMyBookings(): List<Booking> =
-        bookings.filter { it.status == BookingStatus.CONFIRMED }
+    override fun getMyBookings(): List<Booking> {
+        loadPersistedState()
+        return bookings.filter { it.status == BookingStatus.CONFIRMED }
+    }
 
     override fun bookClass(classId: Int): Boolean {
         val target = classes.firstOrNull { it.id == classId } ?: return false
@@ -76,6 +78,16 @@ class DemoRepository(context: Context) : WolfDenRepository {
             )
         )
         persistState()
+        persistSharedAdminBooking(
+            Booking(
+                id = "booking-" + classId + "-" + System.currentTimeMillis(),
+                memberId = member.id,
+                classId = classId,
+                status = BookingStatus.CONFIRMED,
+                createdAt = System.currentTimeMillis().toString()
+            ),
+            target
+        )
         return true
     }
 
@@ -102,7 +114,35 @@ class DemoRepository(context: Context) : WolfDenRepository {
             )
         )
         persistState()
+        persistSharedAdminBookingCancellation(booking.id)
         return true
+    }
+
+    private fun persistSharedAdminBookingCancellation(booking: Booking, target: TrainingClass) {
+        val raw = preferences.getString("admin_bookings", "[]") ?: "[]"
+        val json = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+        val obj = org.json.JSONObject()
+            .put("id", booking.id)
+            .put("memberId", "m-001")
+            .put("memberName", member.name)
+            .put("classId", booking.classId)
+            .put("classTitle", target.title)
+            .put("day", target.day)
+            .put("time", target.time)
+            .put("status", "CONFIRMED")
+            .put("createdAt", booking.createdAt)
+        json.put(obj)
+        preferences.edit().putString("admin_bookings", json.toString()).apply()
+    }
+
+    private fun persistSharedAdminBookingCancellation(bookingId: String) {
+        val raw = preferences.getString("admin_bookings", "[]") ?: "[]"
+        val json = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+        for (i in 0 until json.length()) {
+            val o = json.getJSONObject(i)
+            if (o.optString("id") == bookingId) o.put("status", "CANCELLED")
+        }
+        preferences.edit().putString("admin_bookings", json.toString()).apply()
     }
 
     private fun persistState() {
