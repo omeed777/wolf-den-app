@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -18,6 +19,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -1249,3 +1252,12 @@ private fun SubscriptionScreen(
     }
 }
 
+@Composable
+private fun WolfBrand(size: androidx.compose.ui.unit.Dp) {
+    Image(
+        painter = painterResource(id = R.drawable.wolf_den_logo),
+        contentDescription = "Wolf Den",
+        modifier = Modifier.size(size),
+        contentScale = ContentScale.Fit
+    )
+}
