@@ -30,9 +30,16 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
 
     private fun persistSharedState() {
         val editor = preferences.edit()
-        classes.forEach { cls -> editor.putInt("admin_class_" + cls.id + "_booked", cls.booked) }
-        subscriptions.filter { sub -> sub.memberId == "m-001" }.forEach { sub ->
-            editor.putInt("admin_m001_remaining", sub.remainingSessions)
+        classes.forEach { cls ->
+            editor.putInt("admin_class_" + cls.id + "_booked", cls.booked)
+        }
+        subscriptions.forEach { sub ->
+            val prefix = "admin_sub_" + sub.memberId + "_"
+            editor.putString(prefix + "plan", sub.plan)
+            editor.putInt(prefix + "total", sub.totalSessions)
+            editor.putInt(prefix + "remaining", sub.remainingSessions)
+            editor.putString(prefix + "status", sub.status)
+            editor.putString(prefix + "expires", sub.expiresAt)
         }
         editor.apply()
     }
@@ -43,10 +50,24 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
             val stored = preferences.getInt("admin_class_" + cls.id + "_booked", -1)
             if (stored >= 0) classes[i] = cls.copy(booked = stored)
         }
-        val storedRemaining = preferences.getInt("admin_m001_remaining", -1)
-        if (storedRemaining >= 0) {
-            val i = subscriptions.indexOfFirst { sub -> sub.memberId == "m-001" }
-            if (i >= 0) subscriptions[i] = subscriptions[i].copy(remainingSessions = storedRemaining)
+        subscriptions.indices.forEach { i ->
+            val sub = subscriptions[i]
+            val prefix = "admin_sub_" + sub.memberId + "_"
+            val storedTotal = preferences.getInt(prefix + "total", -1)
+            val storedRemaining = preferences.getInt(prefix + "remaining", -1)
+            if (storedTotal >= 0 || storedRemaining >= 0 ||
+                preferences.contains(prefix + "plan") ||
+                preferences.contains(prefix + "status") ||
+                preferences.contains(prefix + "expires")
+            ) {
+                subscriptions[i] = sub.copy(
+                    plan = preferences.getString(prefix + "plan", sub.plan) ?: sub.plan,
+                    totalSessions = if (storedTotal >= 0) storedTotal else sub.totalSessions,
+                    remainingSessions = if (storedRemaining >= 0) storedRemaining else sub.remainingSessions,
+                    status = preferences.getString(prefix + "status", sub.status) ?: sub.status,
+                    expiresAt = preferences.getString(prefix + "expires", sub.expiresAt) ?: sub.expiresAt
+                )
+            }
         }
     }
 
