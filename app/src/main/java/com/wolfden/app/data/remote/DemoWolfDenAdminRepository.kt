@@ -93,12 +93,13 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         val subIndex = subscriptions.indexOfFirst { it.memberId == request.memberId }
         if (subIndex < 0) throw IllegalStateException("عضو اشتراک فعال ندارد.")
         val sub = subscriptions[subIndex]
+        val member = members.firstOrNull { it.id == request.memberId }
+            ?: throw IllegalArgumentException("عضو پیدا نشد.")
+        if (member.status != "ACTIVE") throw IllegalStateException("این عضو فعال نیست و امکان رزرو ندارد.")
         if (sub.status != "ACTIVE" || sub.remainingSessions <= 0) throw IllegalStateException("جلسه قابل استفاده ندارد.")
 
         classes[classIndex] = cls.copy(booked = cls.booked + 1)
         subscriptions[subIndex] = sub.copy(remainingSessions = sub.remainingSessions - 1)
-        val member = members.firstOrNull { it.id == request.memberId }
-            ?: throw IllegalArgumentException("عضو پیدا نشد.")
         val booking = AdminBookingDto(
             "b-" + System.currentTimeMillis(), member.id, member.name, cls.id, cls.title,
             cls.day, cls.time, "CONFIRMED", "2026-09-19"
