@@ -33,6 +33,10 @@ import com.wolfden.app.data.remote.SharedPreferencesAccessTokenStore
 import com.wolfden.app.data.remote.WolfDenApiConfig
 import com.wolfden.app.data.remote.WolfDenAuthService
 import com.wolfden.app.data.remote.WolfDenHttpApi
+import com.wolfden.app.data.remote.DemoWolfDenAdminRepository
+import com.wolfden.app.data.remote.AdminMemberDto
+import com.wolfden.app.data.remote.AdminSubscriptionDto
+import com.wolfden.app.data.remote.TrainingClassDto
 import com.wolfden.app.model.TrainingClass
 import com.wolfden.app.viewmodel.WolfDenViewModel
 import com.wolfden.app.viewmodel.WolfDenViewModelFactory
