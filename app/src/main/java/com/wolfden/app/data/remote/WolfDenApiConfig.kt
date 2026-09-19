@@ -12,7 +12,12 @@ data class WolfDenApiConfig(
     val verifyOtpPath: String = "/auth/verify-otp",
     val memberPath: String = "/member",
     val classesPath: String = "/classes",
-    val bookingsPath: String = "/bookings"
+    val bookingsPath: String = "/bookings",
+    val adminMembersPath: String = "/admin/members",
+    val adminSubscriptionsPath: String = "/admin/subscriptions",
+    val adminClassesPath: String = "/admin/classes",
+    val adminCoachesPath: String = "/admin/coaches",
+    val adminAttendancePath: String = "/admin/attendance"
 ) {
     init {
         require(baseUrl.isNotBlank()) { "API baseUrl must not be blank" }
