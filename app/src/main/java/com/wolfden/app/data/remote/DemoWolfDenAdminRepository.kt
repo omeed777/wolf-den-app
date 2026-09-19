@@ -170,7 +170,8 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         return result
     }
     override fun createClass(request: CreateClassRequest): TrainingClassDto {
-        val result = TrainingClassDto(classes.size + 1, request.title, request.day, request.time, request.capacity, 0, request.coachId)
+        val coachName = coaches.firstOrNull { it.id == request.coachId }?.name ?: throw IllegalArgumentException("مربی پیدا نشد.")
+        val result = TrainingClassDto(classes.size + 1, request.title.trim(), request.day.trim(), request.time.trim(), request.capacity, 0, coachName)
         classes += result
         return result
     }
@@ -179,7 +180,8 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         if (index < 0) throw IllegalArgumentException("کلاس پیدا نشد.")
         val current = classes[index]
         if (request.capacity < current.booked) throw IllegalStateException("ظرفیت جدید نمی‌تواند کمتر از تعداد رزروهای فعلی باشد.")
-        val updated = current.copy(title = request.title.trim(), day = request.day.trim(), time = request.time.trim(), capacity = request.capacity, coach = request.coachId)
+        val coachName = coaches.firstOrNull { it.id == request.coachId }?.name ?: throw IllegalArgumentException("مربی پیدا نشد.")
+        val updated = current.copy(title = request.title.trim(), day = request.day.trim(), time = request.time.trim(), capacity = request.capacity, coach = coachName)
         classes[index] = updated
         persistSharedState()
         return updated
