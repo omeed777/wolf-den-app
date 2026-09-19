@@ -72,6 +72,12 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     }
 
     private val attendance = mutableListOf<AttendanceDto>()
+    
+    private fun persistAttendance(item: AttendanceDto) {
+        preferences.edit()
+            .putString("attendance_" + item.memberId + "_" + item.classId + "_" + item.date, if (item.present) "PRESENT" else "ABSENT")
+            .apply()
+    }
     private val coaches = listOf(
         CoachDto("c-001", "مربی Wolf", "09121111111"),
         CoachDto("c-002", "مربی دوم", "09122222222")
@@ -131,7 +137,17 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         persistSharedState()
         return true
     }
-    override fun getAttendance(date: String) = attendance.filter { it.date == date }.toList()
+    override fun getAttendance(date: String): List<AttendanceDto> {
+        val result = mutableListOf<AttendanceDto>()
+        members.forEach { member ->
+            classes.forEach { cls ->
+                val key = "attendance_" + member.id + "_" + cls.id + "_" + date
+                val value = preferences.getString(key, null) ?: return@forEach
+                result += AttendanceDto("attendance-" + member.id + "-" + cls.id + "-" + date, member.id, cls.id, date, value == "PRESENT")
+            }
+        }
+        return result
+    }
     override fun updateMember(memberId: String, request: UpdateMemberRequest): AdminMemberDto {
         val index = members.indexOfFirst { it.id == memberId }
         if (index < 0) throw IllegalArgumentException("عضو پیدا نشد.")
@@ -167,6 +183,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
             request.memberId, request.classId, request.date, request.present
         )
         if (existing >= 0) attendance[existing] = result else attendance += result
+        persistAttendance(result)
         return result
     }
 }
