@@ -4,6 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -26,7 +29,8 @@ import com.wolfden.app.viewmodel.WolfDenViewModel
 
 private val WolfBlack = Color(0xFF111111)
 private val WolfRed = Color(0xFFE53935)
-private val WolfSurface = Color(0xFFF5F5F5)
+private val WolfSurface = Color(0xFFF4F4F2)
+private val WolfGold = Color(0xFFFFC107)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,6 +68,8 @@ private fun LoginScreen(phone: String, onPhoneChange: (String) -> Unit, onContin
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        WolfBrand(size = 74.dp)
+        Spacer(Modifier.height(14.dp))
         Text("WOLF DEN", fontSize = 38.sp, fontWeight = FontWeight.Black, color = WolfBlack)
         Text("CROSSFIT", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WolfRed)
         Spacer(Modifier.height(36.dp))
@@ -206,8 +212,14 @@ private fun HomeScreen(
     onClasses: () -> Unit
 ) {
     Column(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("WOLF DEN", fontSize = 30.sp, fontWeight = FontWeight.Black, color = WolfBlack)
-        Text("سلام $memberName 👋", fontSize = 18.sp)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            WolfBrand(size = 48.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("WOLF DEN", fontSize = 24.sp, fontWeight = FontWeight.Black, color = WolfBlack)
+                Text("سلام $memberName 👋", fontSize = 16.sp)
+            }
+        }
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = WolfBlack)) {
             Column(Modifier.padding(20.dp)) {
                 Text("اشتراک فعال", color = Color.White)
@@ -239,12 +251,13 @@ private fun ClassesScreen(
         if (classes.isEmpty()) {
             Text("کلاسی برای نمایش وجود ندارد.", color = Color.Gray)
         } else {
-            classes.forEach { trainingClass ->
-                val bookedByMe = trainingClass.id in bookedIds
-                ClassCard(trainingClass, bookedByMe) {
-                    if (bookedByMe) onCancel(trainingClass.id) else onBook(trainingClass.id)
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(classes, key = { it.id }) { trainingClass ->
+                    val bookedByMe = trainingClass.id in bookedIds
+                    ClassCard(trainingClass, bookedByMe) {
+                        if (bookedByMe) onCancel(trainingClass.id) else onBook(trainingClass.id)
+                    }
                 }
-                Spacer(Modifier.height(12.dp))
             }
         }
     }
@@ -341,5 +354,27 @@ private fun SubscriptionScreen(
         }
         if (bookingCount > 0) Text("رزروهای فعال: $bookingCount جلسه")
         Text("پرداخت داخل اپ در نسخه اول فعال نیست.", color = Color.Gray)
+    }
+}
+
+@Composable
+private fun WolfBrand(size: androidx.compose.ui.unit.Dp) {
+    Canvas(Modifier.size(size)) {
+        val w = size.toPx()
+        val h = size.toPx()
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.50f, h * 0.08f)
+            lineTo(w * 0.20f, h * 0.28f)
+            lineTo(w * 0.14f, h * 0.78f)
+            lineTo(w * 0.50f, h * 0.94f)
+            lineTo(w * 0.86f, h * 0.78f)
+            lineTo(w * 0.80f, h * 0.28f)
+            close()
+        }
+        drawPath(path, color = WolfBlack)
+        drawCircle(WolfRed, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.39f, h * 0.48f))
+        drawCircle(WolfRed, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.61f, h * 0.48f))
+        drawLine(WolfGold, androidx.compose.ui.geometry.Offset(w * 0.42f, h * 0.68f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.74f), strokeWidth = w * 0.04f)
+        drawLine(WolfGold, androidx.compose.ui.geometry.Offset(w * 0.58f, h * 0.68f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.74f), strokeWidth = w * 0.04f)
     }
 }
