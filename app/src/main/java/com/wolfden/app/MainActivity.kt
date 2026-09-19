@@ -387,6 +387,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
     var showAttendance by rememberSaveable { mutableStateOf(false) }
     var showAddBooking by rememberSaveable { mutableStateOf(false) }
     var showAddCoach by rememberSaveable { mutableStateOf(false) }
+    var adminMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val bookings = remember { mutableStateListOf<AdminBookingDto>().apply { addAll(repository.getBookings()) } }
     val members = remember { mutableStateListOf<AdminMemberDto>().apply { addAll(repository.getMembers()) } }
     val subscriptions = remember { mutableStateListOf<AdminSubscriptionDto>().apply { addAll(repository.getSubscriptions()) } }
@@ -411,46 +412,53 @@ private fun AdminDashboard(onBack: () -> Unit) {
         when (tab) {
             0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes, bookings)
             1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true }, onEditSubscription = { tab = 2 }, onUpdateMember = { member ->
-                val updated = repository.updateMember(member.id, UpdateMemberRequest(member.name, member.phone, member.status))
+                val updated = try { repository.updateMember(member.id, UpdateMemberRequest(member.name, member.phone, member.status)) } catch (e: Exception) { adminMessage = e.message ?: "ویرایش عضو انجام نشد."; return@AdminDashboard }
                 val index = members.indexOfFirst { it.id == updated.id }
                 if (index >= 0) members[index] = updated
             })
             2 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions, members, onRenew = { subscription ->
-                val updated = repository.updateSubscription(
+                val updated = try { repository.updateSubscription(
                     subscription.memberId,
                     UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.totalSessions, "ACTIVE", subscription.expiresAt)
-                )
+                ) } catch (e: Exception) { adminMessage = e.message ?: "تمدید اشتراک انجام نشد."; return@AdminDashboard }
                 val index = subscriptions.indexOfFirst { it.id == updated.id }
                 if (index >= 0) subscriptions[index] = updated
             }, onUpdate = { subscription ->
-                val updated = repository.updateSubscription(
+                val updated = try { repository.updateSubscription(
                     subscription.memberId,
                     UpdateSubscriptionRequest(subscription.plan, subscription.totalSessions, subscription.remainingSessions, subscription.status, subscription.expiresAt)
-                )
+                ) } catch (e: Exception) { adminMessage = e.message ?: "ویرایش اشتراک انجام نشد."; return@AdminDashboard }
                 val index = subscriptions.indexOfFirst { it.id == updated.id }
                 if (index >= 0) subscriptions[index] = updated
             })
-            3 -> AdminClassesScreen(Modifier.padding(padding), classes, coaches, onAdd = { showAddClass = true }, onUpdate = { cls, request -> val updated = repository.updateClass(cls.id, request); val index = classes.indexOfFirst { it.id == updated.id }; if (index >= 0) classes[index] = updated }, onDelete = { cls -> if (repository.deleteClass(cls.id)) classes.removeAll { it.id == cls.id } })
+            3 -> AdminClassesScreen(Modifier.padding(padding), classes, coaches, onAdd = { showAddClass = true }, onUpdate = { cls, request -> try { val updated = repository.updateClass(cls.id, request); val index = classes.indexOfFirst { it.id == updated.id }; if (index >= 0) classes[index] = updated } catch (e: Exception) { adminMessage = e.message ?: "ویرایش کلاس انجام نشد." } }, onDelete = { cls -> try { if (repository.deleteClass(cls.id)) classes.removeAll { it.id == cls.id } } catch (e: Exception) { adminMessage = e.message ?: "حذف کلاس انجام نشد." } })
             4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onAdd = { showAddBooking = true }, onCancel = { bookingId ->
-                val booking = bookings.firstOrNull { it.id == bookingId }\n                if (booking != null && repository.cancelBooking(bookingId)) {\n                    bookings.removeAll { it.id == bookingId }\n                    val classIndex = classes.indexOfFirst { it.id == booking.classId }\n                    if (classIndex >= 0) classes[classIndex] = classes[classIndex].copy(booked = (classes[classIndex].booked - 1).coerceAtLeast(0))\n                    val subIndex = subscriptions.indexOfFirst { it.memberId == booking.memberId }\n                    if (subIndex >= 0) subscriptions[subIndex] = subscriptions[subIndex].copy(remainingSessions = (subscriptions[subIndex].remainingSessions + 1).coerceAtMost(subscriptions[subIndex].totalSessions))\n                }
+                val booking = bookings.firstOrNull { it.id == bookingId }
+                try {
+                    if (booking != null && repository.cancelBooking(bookingId)) {
+                        bookings.removeAll { it.id == bookingId }
+                        val classIndex = classes.indexOfFirst { it.id == booking.classId }
+                        if (classIndex >= 0) classes[classIndex] = classes[classIndex].copy(booked = (classes[classIndex].booked - 1).coerceAtLeast(0))
+                        val subIndex = subscriptions.indexOfFirst { it.memberId == booking.memberId }
+                        if (subIndex >= 0) subscriptions[subIndex] = subscriptions[subIndex].copy(remainingSessions = (subscriptions[subIndex].remainingSessions + 1).coerceAtMost(subscriptions[subIndex].totalSessions))
+                    }
+                } catch (e: Exception) { adminMessage = e.message ?: "لغو رزرو انجام نشد." }
             })
-            5 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false })
+            5 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> try { repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false } catch (e: Exception) { adminMessage = e.message ?: "ثبت حضور انجام نشد." } })
             else -> {
                 AdminCoachesScreen(
                     Modifier.padding(padding), coaches,
                     onAdd = { showAddCoach = true },
-                    onUpdate = { coach, request -> val updated = repository.updateCoach(coach.id, request); val i = coaches.indexOfFirst { it.id == updated.id }; if (i >= 0) coaches[i] = updated },
-                    onDelete = { coach -> if (repository.deleteCoach(coach.id)) coaches.removeAll { it.id == coach.id } }
+                    onUpdate = { coach, request -> try { val updated = repository.updateCoach(coach.id, request); val i = coaches.indexOfFirst { it.id == updated.id }; if (i >= 0) coaches[i] = updated } catch (e: Exception) { adminMessage = e.message ?: "ویرایش مربی انجام نشد." } },
+                    onDelete = { coach -> try { if (repository.deleteCoach(coach.id)) coaches.removeAll { it.id == coach.id } } catch (e: Exception) { adminMessage = e.message ?: "حذف مربی انجام نشد." } }
                 )
             }
         }
     }
 
     if (showAddCoach) {
-        val coaches = repository.getCoaches()
         AddCoachDialog(onDismiss = { showAddCoach = false }, onSave = { name, phone ->
-            coaches += repository.createCoach(CreateCoachRequest(name, phone))
-            showAddCoach = false
+            try { repository.createCoach(CreateCoachRequest(name, phone)); showAddCoach = false } catch (e: Exception) { adminMessage = e.message ?: "ثبت مربی انجام نشد." }
         })
     }
 
@@ -458,8 +466,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
         AddMemberDialog(
             onDismiss = { showAddMember = false },
             onSave = { name, phone ->
-                members += repository.createMember(CreateMemberRequest(name, phone))
-                showAddMember = false
+                try { members += repository.createMember(CreateMemberRequest(name, phone)); showAddMember = false } catch (e: Exception) { adminMessage = e.message ?: "ثبت عضو انجام نشد." }
             }
         )
     }
@@ -471,13 +478,15 @@ private fun AdminDashboard(onBack: () -> Unit) {
             bookings = bookings,
             onDismiss = { showAddBooking = false },
             onSave = { memberId, classId ->
-                val booking = repository.createBooking(AdminCreateBookingRequest(memberId, classId))
-                bookings += booking
+                try {
+                    val booking = repository.createBooking(AdminCreateBookingRequest(memberId, classId))
+                    bookings += booking
                 val classIndex = classes.indexOfFirst { it.id == classId }
                 if (classIndex >= 0) classes[classIndex] = classes[classIndex].copy(booked = classes[classIndex].booked + 1)
                 val subIndex = subscriptions.indexOfFirst { it.memberId == memberId }
                 if (subIndex >= 0) subscriptions[subIndex] = subscriptions[subIndex].copy(remainingSessions = (subscriptions[subIndex].remainingSessions - 1).coerceAtLeast(0))
-                showAddBooking = false
+                    showAddBooking = false
+                } catch (e: Exception) { adminMessage = e.message ?: "ثبت رزرو انجام نشد." }
             }
         )
     }
@@ -487,8 +496,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
             coaches = coaches,
             onDismiss = { showAddClass = false },
             onSave = { title, day, time, capacity, coachId ->
-                classes += repository.createClass(CreateClassRequest(title, day, time, capacity, coachId))
-                showAddClass = false
+                try { classes += repository.createClass(CreateClassRequest(title, day, time, capacity, coachId)); showAddClass = false } catch (e: Exception) { adminMessage = e.message ?: "ثبت کلاس انجام نشد." }
             }
         )
     }
@@ -1246,3 +1254,12 @@ private fun WolfBrand(size: androidx.compose.ui.unit.Dp) {
         drawPath(muzzle, color = WolfGold)
     }
 }
+    adminMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { adminMessage = null },
+            title = { Text("پیام مدیریت") },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { adminMessage = null }) { Text("باشه") } }
+        )
+    }
+
