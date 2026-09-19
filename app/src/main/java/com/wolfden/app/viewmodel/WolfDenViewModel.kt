@@ -1,6 +1,7 @@
 package com.wolfden.app.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import com.wolfden.app.data.DemoRepository
 import com.wolfden.app.data.WolfDenRepository
 import com.wolfden.app.model.Booking
@@ -19,8 +20,9 @@ data class WolfDenUiState(
 )
 
 class WolfDenViewModel(
-    private val repository: WolfDenRepository = DemoRepository()
-) : ViewModel() {
+    application: Application,
+    private val repository: WolfDenRepository = DemoRepository(application)
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(WolfDenUiState())
     val uiState: StateFlow<WolfDenUiState> = _uiState.asStateFlow()
