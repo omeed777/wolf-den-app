@@ -14,8 +14,11 @@ Android-first member app for Wolf Den CrossFit.
 - Live demo subscription values on the dashboard
 - Class list with capacity
 - Book/cancel class interaction
-- Persistent local demo bookings and remaining sessions
-- Subscription status screen
+- Persistent local demo bookings, capacity and remaining sessions
+- Persistent demo members and subscription edits
+- Persistent demo classes (create/edit/delete + coach + capacity)
+- Persistent demo coaches and attendance
+- Subscription status screen with booking eligibility
 - Bottom navigation
 - Repository abstraction between UI and data
 - Production member backend API contract
@@ -58,16 +61,29 @@ The admin contract covers:
 
 No real backend URL or credentials are embedded in the client until the production backend is selected and provisioned.
 
-## Roadmap
+## Current status
 
-1. Replace the demo OTP flow with a real SMS/OTP provider.
-2. Implement the HTTP backend client and authentication token storage.
-3. Connect member, subscription, class and booking endpoints.
-4. Add booking history and server-side validation.
-5. Build the admin panel for members, subscriptions, classes, coaches and attendance.
-6. Replace placeholder branding with the official Wolf Den logo/assets.
-7. Add production security, error handling, loading states and offline handling.
-8. Run release QA and publish the Android V1.
-9. Prepare iOS client after Android V1 is stable.
+The Android demo is now functionally wired end-to-end for local testing:
+
+- Member login/demo OTP
+- Member dashboard
+- Subscription status and booking eligibility
+- Class capacity and booking/cancellation
+- Admin members
+- Admin subscriptions
+- Admin classes and coaches
+- Admin bookings
+- Attendance
+- Shared demo persistence between member and admin flows
+
+## Remaining production work
+
+1. Provision the production backend and real SMS/OTP provider.
+2. Set WOLF_DEN_API_BASE_URL for production builds.
+3. Connect and verify the production member/admin endpoints.
+4. Replace the geometric placeholder wolf mark with the official Wolf Den logo asset.
+5. Run Android release QA on real devices.
+6. Configure signing and generate the release APK/AAB.
+7. Prepare the iOS client after Android V1 is stable.
 
 Payments remain outside V1.
