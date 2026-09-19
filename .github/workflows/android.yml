@@ -25,8 +25,18 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Verify Gradle
-        run: gradle --version
+      - name: Prepare release signing key
+        shell: bash
+        run: |
+          keytool -genkeypair -v \
+            -keystore "$RUNNER_TEMP/wolf-den-release.jks" \
+            -storepass "wolfden-test-store" \
+            -keypass "wolfden-test-key" \
+            -alias "wolf-den" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Wolf Den, OU=Wolf Den, O=Wolf Den, L=Babol, ST=Mazandaran, C=IR"
 
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug
@@ -37,25 +47,21 @@ jobs:
           ls -lh app/build/outputs/apk/debug/app-debug.apk
           sha256sum app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Build release APK and AAB
+      - name: Build signed release APK and AAB
         shell: bash
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/wolf-den-release.jks
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: wolfden-test-store
+          ANDROID_KEY_ALIAS: wolf-den
+          ANDROID_KEY_PASSWORD: wolfden-test-key
         run: gradle --no-daemon --stacktrace assembleRelease bundleRelease
-      - name: Verify release APK and AAB outputs
+
+      - name: Verify signed release APK and AAB outputs
         shell: bash
         run: |
-          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-            ls -lh app/build/outputs/apk/release/app-release.apk
-            sha256sum app/build/outputs/apk/release/app-release.apk
-          else
-            test -f app/build/outputs/apk/release/app-release-unsigned.apk
-            ls -lh app/build/outputs/apk/release/app-release-unsigned.apk
-            sha256sum app/build/outputs/apk/release/app-release-unsigned.apk
-          fi
+          test -f app/build/outputs/apk/release/app-release.apk
+          ls -lh app/build/outputs/apk/release/app-release.apk
+          sha256sum app/build/outputs/apk/release/app-release.apk
           test -f app/build/outputs/bundle/release/app-release.aab
           ls -lh app/build/outputs/bundle/release/app-release.aab
           sha256sum app/build/outputs/bundle/release/app-release.aab
@@ -66,9 +72,8 @@ jobs:
           name: wolf-den-release
           path: |
             app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/release/app-release-unsigned.apk
             app/build/outputs/bundle/release/app-release.aab
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 7
 
       - name: Upload debug APK
