@@ -513,11 +513,37 @@ private fun AdminSubscriptionsScreen(modifier: Modifier, subscriptions: List<Adm
 
 @Composable
 private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDto>, onAdd: () -> Unit) {
+    var selectedClass by remember { mutableStateOf<TrainingClassDto?>(null) }
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("برنامه کلاس‌ها و ظرفیت", color = WolfMuted) }; Button(onClick = onAdd) { Text("کلاس جدید") } } }
         items(classes, key = { it.id }) { trainingClass ->
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(trainingClass.day + " • " + trainingClass.time, color = WolfMuted); Text("مربی: " + trainingClass.coach); Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity, color = WolfGoldBright) } }
+            val full = trainingClass.booked >= trainingClass.capacity
+            Card(Modifier.fillMaxWidth().clickable { selectedClass = trainingClass }, RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(trainingClass.day + " • " + trainingClass.time, color = WolfMuted)
+                    Text("مربی: " + trainingClass.coach)
+                    Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity, color = if (full) Color.Red else WolfGoldBright)
+                    Text(if (full) "ظرفیت تکمیل است" else "ظرفیت خالی: " + (trainingClass.capacity - trainingClass.booked), color = WolfMuted)
+                }
+            }
         }
+    }
+    selectedClass?.let { trainingClass ->
+        AlertDialog(
+            onDismissRequest = { selectedClass = null },
+            confirmButton = { TextButton(onClick = { selectedClass = null }) { Text("بستن") } },
+            title = { Text(trainingClass.title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("روز: " + trainingClass.day)
+                    Text("ساعت: " + trainingClass.time)
+                    Text("مربی: " + trainingClass.coach)
+                    Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity)
+                    Text("جای خالی: " + (trainingClass.capacity - trainingClass.booked))
+                }
+            }
+        )
     }
 }
 
