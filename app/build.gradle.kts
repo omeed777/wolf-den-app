@@ -16,7 +16,7 @@ android {
         versionName = "1.0"
 
         // Empty by default: the app stays in Demo Mode until a real backend is configured.
-        buildConfigField("String", "WOLF_DEN_API_BASE_URL", "\"\"\"")
+        buildConfigField("String", "WOLF_DEN_API_BASE_URL", "\"${providers.gradleProperty("WOLF_DEN_API_BASE_URL").orElse("").get()}\"")
     }
 
     buildFeatures {
