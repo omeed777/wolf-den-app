@@ -30,7 +30,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     }
 
     private fun persistCoaches() {
-        val encoded = coaches.joinToString("\n") { listOf(it.id, it.name, it.phone).joinToString("|") }
+        val encoded = coaches.joinToString("\n") { listOf(it.id, it.name.replace("|", " "), it.phone.replace("|", " ")).joinToString("|") }
         preferences.edit().putString("admin_coaches", encoded).apply()
     }
 
