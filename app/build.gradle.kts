@@ -9,12 +9,6 @@ android {
     namespace = "com.wolfden.app"
     compileSdk = 35
 
-    defaultConfig {
-        applicationId = "com.wolfden.app"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
     val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
     val releaseKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
     val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
@@ -30,6 +24,13 @@ android {
             }
         }
     }
+
+    defaultConfig {
+        applicationId = "com.wolfden.app"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
 
         // Empty by default: the app stays in Demo Mode until a real backend is configured.
         buildConfigField("String", "WOLF_DEN_API_BASE_URL", "\"$wolfDenApiBaseUrl\"")
