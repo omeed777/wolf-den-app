@@ -21,6 +21,8 @@ interface WolfDenAdminApi {
     fun updateMember(accessToken: String, memberId: String, request: UpdateMemberRequest): AdminMemberDto
     fun updateSubscription(accessToken: String, memberId: String, request: UpdateSubscriptionRequest): AdminSubscriptionDto
     fun createClass(accessToken: String, request: CreateClassRequest): TrainingClassDto
+    fun updateClass(accessToken: String, classId: Int, request: UpdateClassRequest): TrainingClassDto
+    fun deleteClass(accessToken: String, classId: Int): Boolean
     fun recordAttendance(accessToken: String, request: RecordAttendanceRequest): AttendanceDto
 }
 
@@ -92,6 +94,14 @@ data class UpdateSubscriptionRequest(
 )
 
 data class CreateClassRequest(
+    val title: String,
+    val day: String,
+    val time: String,
+    val capacity: Int,
+    val coachId: String
+)
+
+data class UpdateClassRequest(
     val title: String,
     val day: String,
     val time: String,
