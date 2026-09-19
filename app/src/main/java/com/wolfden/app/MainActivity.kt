@@ -1065,6 +1065,7 @@ private fun ClassesScreen(
     Column(modifier.fillMaxSize().padding(20.dp)) {
         Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black)
         Text("کلاس موردنظر را انتخاب و رزرو کن.", color = WolfMuted)
+        Text("ظرفیت و وضعیت رزرو لحظه‌ای نمایش داده می‌شود.", color = WolfMuted, fontSize = 12.sp)
         Spacer(Modifier.height(16.dp))
         if (classes.isEmpty()) {
             Text("کلاسی برای نمایش وجود ندارد.", color = WolfMuted)
@@ -1101,9 +1102,10 @@ private fun MyBookingsScreen(
                 }
             }
         } else {
-            bookings.forEach { booking ->
-                val trainingClass = classes.firstOrNull { it.id == booking.classId }
-                if (trainingClass != null) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(bookings, key = { it.id }) { booking ->
+                    val trainingClass = classes.firstOrNull { it.id == booking.classId }
+                    if (trainingClass != null) {
                     Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) {
                         Column(Modifier.padding(16.dp)) {
                             Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -1116,7 +1118,6 @@ private fun MyBookingsScreen(
                             ) { Text("لغو رزرو") }
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
                 }
             }
         }
