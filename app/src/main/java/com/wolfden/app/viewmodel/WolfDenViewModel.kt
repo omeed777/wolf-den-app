@@ -2,6 +2,7 @@ package com.wolfden.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.wolfden.app.data.DemoRepository
+import com.wolfden.app.data.WolfDenRepository
 import com.wolfden.app.model.Booking
 import com.wolfden.app.model.Member
 import com.wolfden.app.model.TrainingClass
@@ -18,7 +19,7 @@ data class WolfDenUiState(
 )
 
 class WolfDenViewModel(
-    private val repository: DemoRepository = DemoRepository()
+    private val repository: WolfDenRepository = DemoRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WolfDenUiState())
