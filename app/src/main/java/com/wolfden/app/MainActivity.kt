@@ -81,64 +81,21 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun WolfDenApp() {
+    // Keep launcher startup deliberately minimal for APK/device testing.
+    // Production networking/session restoration is enabled after the first
+    // successful local startup is verified on the target device.
     val context = LocalContext.current
-    val preferences = remember {
-        context.getSharedPreferences("wolf_den_session", android.content.Context.MODE_PRIVATE)
-    }
-    val tokenStore = remember { SharedPreferencesAccessTokenStore(context) }
-    val apiBaseUrl = BuildConfig.WOLF_DEN_API_BASE_URL.trim()
-    val productionMode = apiBaseUrl.isNotBlank()
-    val api = remember(apiBaseUrl) {
-        if (apiBaseUrl.isBlank()) null
-        else WolfDenHttpApi(WolfDenApiConfig(apiBaseUrl))
-    }
-    val authService: WolfDenAuthService? = remember(api) {
-        api?.let { RemoteWolfDenAuthService(it, tokenStore) }
-    }
-
-    var loggedIn by rememberSaveable {
-        mutableStateOf(
-            preferences.getBoolean("logged_in", false) &&
-                (!productionMode || !tokenStore.get().isNullOrBlank())
-        )
-    }
-    var phone by rememberSaveable {
-        mutableStateOf(preferences.getString("phone", "") ?: "")
-    }
-    var memberId by rememberSaveable {
-        mutableStateOf(preferences.getString("member_id", "") ?: "")
-    }
-    var accessToken by remember { mutableStateOf(tokenStore.get()) }
+    var loggedIn by rememberSaveable { mutableStateOf(false) }
+    var phone by rememberSaveable { mutableStateOf("") }
     var showAdmin by rememberSaveable { mutableStateOf(false) }
 
     fun loginDemo() {
-        preferences.edit()
-            .putBoolean("logged_in", true)
-            .putString("phone", phone)
-            .remove("member_id")
-            .apply()
         loggedIn = true
-        accessToken = null
-    }
-
-    fun loginProduction(auth: com.wolfden.app.data.remote.AuthResponse) {
-        preferences.edit()
-            .putBoolean("logged_in", true)
-            .putString("phone", phone)
-            .putString("member_id", auth.memberId)
-            .apply()
-        loggedIn = true
-        memberId = auth.memberId
-        accessToken = auth.accessToken
     }
 
     fun logout() {
-        preferences.edit().clear().apply()
-        tokenStore.clear()
         loggedIn = false
         phone = ""
-        memberId = ""
-        accessToken = null
     }
 
     MaterialTheme(
@@ -154,41 +111,31 @@ private fun WolfDenApp() {
         )
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            if (showAdmin) {
-                AdminDashboard(onBack = { showAdmin = false })
-            } else if (!loggedIn) {
-                LoginFlow(
+            when {
+                showAdmin -> AdminDashboard(onBack = { showAdmin = false })
+                !loggedIn -> LoginFlow(
                     phone = phone,
                     onPhoneChange = { phone = it },
-                    authService = authService,
-                    productionMode = productionMode,
+                    authService = null,
+                    productionMode = false,
                     onDemoLogin = ::loginDemo,
-                    onProductionLogin = ::loginProduction,
+                    onProductionLogin = { loginDemo() },
                     onOpenAdmin = { showAdmin = true }
                 )
-            } else {
-                val repository = remember(accessToken, memberId, productionMode) {
-                    if (productionMode && !accessToken.isNullOrBlank() && memberId.isNotBlank()) {
-                        RemoteWolfDenRepository(
-                            api = api!!,
-                            accessToken = accessToken!!,
-                            memberId = memberId
+                else -> {
+                    val repository = remember(context) { DemoRepository(context) }
+                    val factory = remember(repository) {
+                        WolfDenViewModelFactory(
+                            application = context.applicationContext as Application,
+                            repository = repository
                         )
-                    } else {
-                        DemoRepository(context)
                     }
-                }
-                val factory = remember(repository) {
-                    WolfDenViewModelFactory(
-                        application = context.applicationContext as Application,
-                        repository = repository
+                    val viewModel: WolfDenViewModel = viewModel(
+                        key = "wolf-den-demo",
+                        factory = factory
                     )
+                    MainShell(viewModel, onLogout = ::logout)
                 }
-                val viewModel: WolfDenViewModel = viewModel(
-                    key = if (productionMode) "wolf-den-production" else "wolf-den-demo",
-                    factory = factory
-                )
-                MainShell(viewModel, onLogout = ::logout)
             }
         }
     }
