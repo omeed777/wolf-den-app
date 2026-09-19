@@ -13,11 +13,15 @@ android {
     val releaseKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
     val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
     val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+    val hasReleaseSigning = !releaseKeystorePath.isNullOrBlank() &&
+        !releaseKeystorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
 
     signingConfigs {
         create("release") {
-            if (!releaseKeystorePath.isNullOrBlank() && !releaseKeystorePassword.isNullOrBlank() && !releaseKeyAlias.isNullOrBlank() && !releaseKeyPassword.isNullOrBlank()) {
-                storeFile = file(releaseKeystorePath)
+            if (hasReleaseSigning) {
+                storeFile = file(releaseKeystorePath!!)
                 storePassword = releaseKeystorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
@@ -31,14 +35,12 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-
-        // Empty by default: the app stays in Demo Mode until a real backend is configured.
         buildConfigField("String", "WOLF_DEN_API_BASE_URL", "\"$wolfDenApiBaseUrl\"")
     }
 
     buildTypes {
         getByName("release") {
-            if (!releaseKeystorePath.isNullOrBlank()) {
+            if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
             isMinifyEnabled = false
