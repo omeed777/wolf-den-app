@@ -108,7 +108,7 @@ private fun LoginScreen(phone: String, onPhoneChange: (String) -> Unit, onContin
             shape = RoundedCornerShape(14.dp)
         ) { Text("دریافت کد تایید", fontSize = 16.sp) }
         Spacer(Modifier.height(12.dp))
-        Text("ارسال واقعی پیامک در مرحله اتصال Backend فعال می‌شود.", color = Color.Gray, fontSize = 12.sp)
+        Text("ارسال واقعی پیامک در مرحله اتصال Backend فعال می‌شود.", color = WolfMuted, fontSize = 12.sp)
     }
 }
 
@@ -121,7 +121,7 @@ private fun OtpScreen(phone: String, otp: String, onOtpChange: (String) -> Unit,
     ) {
         Text("تایید شماره", fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        Text("کد تایید ارسال‌شده به $phone را وارد کنید.", color = Color.Gray, textAlign = TextAlign.Center)
+        Text("کد تایید ارسال‌شده به $phone را وارد کنید.", color = WolfMuted, textAlign = TextAlign.Center)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(
             value = otp,
@@ -139,7 +139,7 @@ private fun OtpScreen(phone: String, otp: String, onOtpChange: (String) -> Unit,
             shape = RoundedCornerShape(14.dp)
         ) { Text("ورود به Wolf Den", fontSize = 16.sp) }
         TextButton(onClick = onBack) { Text("ویرایش شماره موبایل") }
-        Text("فعلاً کد فقط از نظر ۶ رقمی بودن بررسی می‌شود.", color = Color.Gray, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("فعلاً کد فقط از نظر ۶ رقمی بودن بررسی می‌شود.", color = WolfMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -241,7 +241,7 @@ private fun HomeScreen(
                 Text("برای مشاهده تعداد جلسات باقی‌مانده وارد بخش اشتراک شوید.", color = Color(0xFFD0D0D0))
             }
         }
-        if (bookingCount > 0) Text("رزروهای فعال: $bookingCount جلسه", color = WolfRed, fontWeight = FontWeight.Bold)
+        if (bookingCount > 0) Text("رزروهای فعال: $bookingCount جلسه", color = WolfGoldBright, fontWeight = FontWeight.Bold)
         Text("دسترسی سریع", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Button(onClick = onClasses, Modifier.fillMaxWidth().height(52.dp)) { Text("مشاهده و رزرو کلاس‌ها") }
         Spacer(Modifier.weight(1f))
@@ -260,10 +260,10 @@ private fun ClassesScreen(
     val bookedIds = bookings.map { it.classId }.toSet()
     Column(modifier.fillMaxSize().padding(20.dp)) {
         Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black)
-        Text("کلاس موردنظر را انتخاب و رزرو کن.", color = Color.Gray)
+        Text("کلاس موردنظر را انتخاب و رزرو کن.", color = WolfMuted)
         Spacer(Modifier.height(16.dp))
         if (classes.isEmpty()) {
-            Text("کلاسی برای نمایش وجود ندارد.", color = Color.Gray)
+            Text("کلاسی برای نمایش وجود ندارد.", color = WolfMuted)
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(classes, key = { it.id }) { trainingClass ->
@@ -286,14 +286,14 @@ private fun MyBookingsScreen(
 ) {
     Column(modifier.fillMaxSize().padding(20.dp)) {
         Text("رزروهای من", fontSize = 28.sp, fontWeight = FontWeight.Black)
-        Text("کلاس‌های رزروشده فعلی", color = Color.Gray)
+        Text("کلاس‌های رزروشده فعلی", color = WolfMuted)
         Spacer(Modifier.height(16.dp))
         if (bookings.isEmpty()) {
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = WolfCard)) {
                 Column(Modifier.padding(20.dp)) {
                     Text("هنوز کلاسی رزرو نکرده‌ای.", fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
-                    Text("از بخش کلاس‌ها می‌توانی اولین کلاس خودت را رزرو کنی.", color = Color.Gray)
+                    Text("از بخش کلاس‌ها می‌توانی اولین کلاس خودت را رزرو کنی.", color = WolfMuted)
                 }
             }
         } else {
@@ -303,8 +303,8 @@ private fun MyBookingsScreen(
                     Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) {
                         Column(Modifier.padding(16.dp)) {
                             Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Text("${trainingClass.day} • ${trainingClass.time}", color = Color.Gray)
-                            Text("مربی: ${trainingClass.coach}", color = Color.Gray)
+                            Text("${trainingClass.day} • ${trainingClass.time}", color = WolfMuted)
+                            Text("مربی: ${trainingClass.coach}", color = WolfMuted)
                             Spacer(Modifier.height(10.dp))
                             OutlinedButton(
                                 onClick = { onCancel(trainingClass.id) },
@@ -326,13 +326,13 @@ private fun ClassCard(trainingClass: TrainingClass, bookedByMe: Boolean, onBooki
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(trainingClass.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text("${trainingClass.day} • ${trainingClass.time}", color = Color.Gray)
-                    Text("مربی: ${trainingClass.coach}", color = Color.Gray)
+                    Text("${trainingClass.day} • ${trainingClass.time}", color = WolfMuted)
+                    Text("مربی: ${trainingClass.coach}", color = WolfMuted)
                 }
                 Text("${trainingClass.booked} / ${trainingClass.capacity}", fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(12.dp))
-            Text("ظرفیت باقی‌مانده: ${trainingClass.available} نفر", color = if (trainingClass.available > 0) WolfRed else Color.Gray)
+            Text("ظرفیت باقی‌مانده: ${trainingClass.available} نفر", color = if (trainingClass.available > 0) WolfGoldBright else Color.Gray)
             Spacer(Modifier.height(10.dp))
             Button(
                 onClick = onBooking,
@@ -355,19 +355,19 @@ private fun SubscriptionScreen(
 ) {
     Column(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("اشتراک من", fontSize = 28.sp, fontWeight = FontWeight.Black)
-        Text(memberName, color = Color.Gray)
+        Text(memberName, color = WolfMuted)
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = WolfCard)) {
             Column(Modifier.padding(20.dp)) {
-                Text("پلن فعلی", color = Color.Gray)
+                Text("پلن فعلی", color = WolfMuted)
                 Text(plan, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
                 Text("جلسات باقی‌مانده: $remainingSessions از $totalSessions")
                 Text("تاریخ پایان: $expiresAt")
-                Text("وضعیت: فعال", color = WolfRed, fontWeight = FontWeight.Bold)
+                Text("وضعیت: فعال", color = WolfGoldBright, fontWeight = FontWeight.Bold)
             }
         }
         if (bookingCount > 0) Text("رزروهای فعال: $bookingCount جلسه")
-        Text("پرداخت داخل اپ در نسخه اول فعال نیست.", color = Color.Gray)
+        Text("پرداخت داخل اپ در نسخه اول فعال نیست.", color = WolfMuted)
     }
 }
 
@@ -387,7 +387,7 @@ private fun WolfBrand(size: androidx.compose.ui.unit.Dp) {
         }
         drawPath(path, color = WolfBlack)
         drawCircle(WolfGoldBright, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.39f, h * 0.48f))
-        drawCircle(WolfRed, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.61f, h * 0.48f))
+        drawCircle(WolfGoldBright, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.61f, h * 0.48f))
         drawLine(WolfGold, androidx.compose.ui.geometry.Offset(w * 0.42f, h * 0.68f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.74f), strokeWidth = w * 0.04f)
         drawLine(WolfGold, androidx.compose.ui.geometry.Offset(w * 0.58f, h * 0.68f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.74f), strokeWidth = w * 0.04f)
     }
