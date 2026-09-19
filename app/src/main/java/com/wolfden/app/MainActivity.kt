@@ -1075,7 +1075,7 @@ private fun HomeScreen(
         }
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = WolfBlack)) {
             Column(Modifier.padding(20.dp)) {
-                val expired = expiresAt.matches(Regex("^\\\\d{4}-\\\\d{2}-\\\\d{2}$")) && runCatching { java.time.LocalDate.parse(expiresAt).isBefore(java.time.LocalDate.now()) }.getOrDefault(false)
+                val expired = expiresAt.matches(Regex("^\\d{4}-\\d{2}-\\d{2}$")) && runCatching { java.time.LocalDate.parse(expiresAt).isBefore(java.time.LocalDate.now()) }.getOrDefault(false)
                 val statusText = when {
                     expired -> "منقضی شده"
                     subscriptionStatus == SubscriptionStatus.ACTIVE -> "اشتراک فعال"
