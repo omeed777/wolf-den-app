@@ -13,6 +13,8 @@ interface WolfDenAdminRepository {
     fun updateMember(memberId: String, request: UpdateMemberRequest): AdminMemberDto
     fun updateSubscription(memberId: String, request: UpdateSubscriptionRequest): AdminSubscriptionDto
     fun createClass(request: CreateClassRequest): TrainingClassDto
+    fun updateClass(classId: Int, request: UpdateClassRequest): TrainingClassDto
+    fun deleteClass(classId: Int): Boolean
     fun recordAttendance(request: RecordAttendanceRequest): AttendanceDto
 }
 
@@ -33,6 +35,8 @@ class RemoteWolfDenAdminRepository(
     override fun updateSubscription(memberId: String, request: UpdateSubscriptionRequest) =
         api.updateSubscription(accessToken, memberId, request)
     override fun createClass(request: CreateClassRequest) = api.createClass(accessToken, request)
+    override fun updateClass(classId: Int, request: UpdateClassRequest) = api.updateClass(accessToken, classId, request)
+    override fun deleteClass(classId: Int) = api.deleteClass(accessToken, classId)
     override fun recordAttendance(request: RecordAttendanceRequest) =
         api.recordAttendance(accessToken, request)
 }
