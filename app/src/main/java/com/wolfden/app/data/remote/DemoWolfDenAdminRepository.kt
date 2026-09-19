@@ -78,14 +78,14 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
             .putString("attendance_" + item.memberId + "_" + item.classId + "_" + item.date, if (item.present) "PRESENT" else "ABSENT")
             .apply()
     }
-    private val coaches = listOf(
+    private val coaches = mutableListOf(
         CoachDto("c-001", "مربی Wolf", "09121111111"),
         CoachDto("c-002", "مربی دوم", "09122222222")
     )
     override fun getMembers() = members.toList()
     override fun getSubscriptions() = subscriptions.toList()
     override fun getClasses() = classes.toList()
-    override fun getCoaches() = coaches
+    override fun getCoaches() = coaches.toList()
     override fun getBookings() = bookings.filter { it.status == "CONFIRMED" }.toList()
     override fun createBooking(request: AdminCreateBookingRequest): AdminBookingDto {
         if (bookings.any { it.memberId == request.memberId && it.classId == request.classId && it.status == "CONFIRMED" }) {
