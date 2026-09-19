@@ -40,6 +40,7 @@ import com.wolfden.app.data.remote.AdminCreateBookingRequest
 import com.wolfden.app.data.remote.AdminSubscriptionDto
 import com.wolfden.app.data.remote.TrainingClassDto
 import com.wolfden.app.data.remote.CreateMemberRequest
+import com.wolfden.app.data.remote.UpdateMemberRequest
 import com.wolfden.app.data.remote.CreateClassRequest
 import com.wolfden.app.data.remote.UpdateSubscriptionRequest
 import com.wolfden.app.data.remote.RecordAttendanceRequest
@@ -404,7 +405,11 @@ private fun AdminDashboard(onBack: () -> Unit) {
     ) { padding ->
         when (tab) {
             0 -> AdminOverviewScreen(Modifier.padding(padding), members, subscriptions, classes)
-            1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true }, onEditSubscription = { subscription -> tab = 2 })
+            1 -> AdminMembersScreen(Modifier.padding(padding), members, subscriptions, onAdd = { showAddMember = true }, onEditSubscription = { tab = 2 }, onUpdateMember = { member ->
+                val updated = repository.updateMember(member.id, UpdateMemberRequest(member.name, member.phone, member.status))
+                val index = members.indexOfFirst { it.id == updated.id }
+                if (index >= 0) members[index] = updated
+            })
             2 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions, members, onRenew = { subscription ->
                 val updated = repository.updateSubscription(
                     subscription.memberId,
@@ -474,10 +479,12 @@ private fun AdminMembersScreen(
     members: List<AdminMemberDto>,
     subscriptions: List<AdminSubscriptionDto>,
     onAdd: () -> Unit,
-    onEditSubscription: (AdminSubscriptionDto) -> Unit
+    onEditSubscription: (AdminSubscriptionDto) -> Unit,
+    onUpdateMember: (AdminMemberDto) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var selectedId by remember { mutableStateOf<String?>(null) }
+    var editMember by remember { mutableStateOf<AdminMemberDto?>(null) }
     val filtered = members.filter { it.name.contains(query, ignoreCase = true) || it.phone.contains(query) }
 
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -491,13 +498,7 @@ private fun AdminMembersScreen(
             }
         }
         item {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("جستجو نام یا موبایل") },
-                singleLine = true
-            )
+            OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text("جستجو نام یا موبایل") }, singleLine = true)
         }
         items(filtered, key = { it.id }) { member ->
             val sub = subscriptions.firstOrNull { it.memberId == member.id }
@@ -505,17 +506,15 @@ private fun AdminMembersScreen(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(member.name, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(member.phone, color = WolfMuted)
-                    Text("وضعیت: " + member.status, color = WolfGoldBright)
+                    Text("وضعیت: " + member.status, color = if (member.status == "ACTIVE") WolfGoldBright else Color(0xFFFF6B6B))
                     Text(if (sub != null) sub.plan + " • " + sub.remainingSessions + " جلسه باقی‌مانده" else "بدون اشتراک", color = WolfMuted)
-                    Text("برای مشاهده جزئیات ضربه بزنید", color = WolfGold, fontSize = 12.sp)
                 }
             }
         }
         if (filtered.isEmpty()) item { Text("عضوی پیدا نشد.", color = WolfMuted) }
     }
 
-    val selected = members.firstOrNull { it.id == selectedId }
-    if (selected != null) {
+    members.firstOrNull { it.id == selectedId }?.let { selected ->
         val sub = subscriptions.firstOrNull { it.memberId == selected.id }
         AlertDialog(
             onDismissRequest = { selectedId = null },
@@ -525,23 +524,51 @@ private fun AdminMembersScreen(
                     Text("موبایل: " + selected.phone)
                     Text("وضعیت عضو: " + selected.status)
                     HorizontalDivider()
-                    Text("اشتراک", fontWeight = FontWeight.Bold, color = WolfGoldBright)
                     if (sub != null) {
-                        Text("پلن: " + sub.plan)
+                        Text("اشتراک: " + sub.plan, fontWeight = FontWeight.Bold)
                         Text("جلسات: " + sub.remainingSessions + " از " + sub.totalSessions)
                         Text("انقضا: " + sub.expiresAt)
-                        Text("وضعیت اشتراک: " + sub.status)
-                    } else {
-                        Text("این عضو اشتراک ندارد.", color = WolfMuted)
+                    } else Text("این عضو اشتراک ندارد.", color = WolfMuted)
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = { editMember = selected; selectedId = null }) { Text("ویرایش عضو") }
+                    if (sub != null) Button(onClick = { onEditSubscription(sub); selectedId = null }) { Text("اشتراک") }
+                }
+            },
+            dismissButton = { TextButton(onClick = { selectedId = null }) { Text("بستن") } }
+        )
+    }
+
+    editMember?.let { member ->
+        var name by remember(member.id) { mutableStateOf(member.name) }
+        var phone by remember(member.id) { mutableStateOf(member.phone) }
+        var status by remember(member.id) { mutableStateOf(member.status) }
+        AlertDialog(
+            onDismissRequest = { editMember = null },
+            title = { Text("ویرایش عضو") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(name, { name = it }, label = { Text("نام و نام خانوادگی") }, singleLine = true)
+                    OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(11) }, label = { Text("شماره موبایل") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(status == "ACTIVE", { status = "ACTIVE" }); Text("فعال")
+                        Spacer(Modifier.width(12.dp))
+                        RadioButton(status == "SUSPENDED", { status = "SUSPENDED" }); Text("تعلیق")
                     }
                 }
             },
             confirmButton = {
-                if (sub != null) {
-                    Button(onClick = { onEditSubscription(sub); selectedId = null }) { Text("مدیریت اشتراک") }
-                }
+                Button(
+                    enabled = name.trim().isNotBlank() && phone.length == 11,
+                    onClick = {
+                        onUpdateMember(member.copy(name = name.trim(), phone = phone, status = status))
+                        editMember = null
+                    }
+                ) { Text("ذخیره") }
             },
-            dismissButton = { TextButton(onClick = { selectedId = null }) { Text("بستن") } }
+            dismissButton = { TextButton(onClick = { editMember = null }) { Text("انصراف") } }
         )
     }
 }
