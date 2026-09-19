@@ -18,6 +18,7 @@ interface WolfDenAdminApi {
     fun getAttendance(accessToken: String, date: String): List<AttendanceDto>
 
     fun createMember(accessToken: String, request: CreateMemberRequest): AdminMemberDto
+    fun updateMember(accessToken: String, memberId: String, request: UpdateMemberRequest): AdminMemberDto
     fun updateSubscription(accessToken: String, memberId: String, request: UpdateSubscriptionRequest): AdminSubscriptionDto
     fun createClass(accessToken: String, request: CreateClassRequest): TrainingClassDto
     fun recordAttendance(accessToken: String, request: RecordAttendanceRequest): AttendanceDto
@@ -74,6 +75,12 @@ data class AttendanceDto(
 data class CreateMemberRequest(
     val name: String,
     val phone: String
+)
+
+data class UpdateMemberRequest(
+    val name: String,
+    val phone: String,
+    val status: String
 )
 
 data class UpdateSubscriptionRequest(
