@@ -91,6 +91,16 @@ class WolfDenHttpAdminApi(
                 TrainingClassDto(it.getInt("id"), it.requiredString("title"), it.requiredString("day"), it.requiredString("time"), it.getInt("capacity"), it.getInt("booked"), it.requiredString("coach"))
             }
 
+    override fun updateClass(accessToken: String, classId: Int, request: UpdateClassRequest): TrainingClassDto =
+        this.request("PUT", config.classesPath + "/" + classId,
+            JSONObject().put("title", request.title).put("day", request.day).put("time", request.time).put("capacity", request.capacity).put("coachId", request.coachId),
+            accessToken).let {
+                TrainingClassDto(it.getInt("id"), it.requiredString("title"), it.requiredString("day"), it.requiredString("time"), it.getInt("capacity"), it.getInt("booked"), it.requiredString("coach"))
+            }
+
+    override fun deleteClass(accessToken: String, classId: Int): Boolean =
+        this.request("DELETE", config.classesPath + "/" + classId, token = accessToken).optBoolean("success", true)
+
     override fun recordAttendance(accessToken: String, request: RecordAttendanceRequest): AttendanceDto =
         this.request("POST", config.attendancePath,
             JSONObject().put("memberId", request.memberId).put("classId", request.classId).put("date", request.date).put("present", request.present),
