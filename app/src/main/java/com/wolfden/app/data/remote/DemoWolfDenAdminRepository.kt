@@ -3,6 +3,7 @@ package com.wolfden.app.data.remote
 import android.content.Context
 
 class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
+    private val preferences = context.applicationContext.getSharedPreferences("wolf_den_demo_data", Context.MODE_PRIVATE)
     private val members = mutableListOf(
         AdminMemberDto("m-001", "علی رضایی", "09120000001", "ACTIVE"),
         AdminMemberDto("m-002", "سارا احمدی", "09120000002", "ACTIVE"),
@@ -23,6 +24,32 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
         AdminBookingDto("b-002", "m-002", "سارا احمدی", 1, "CrossFit", "امروز", "18:00", "CONFIRMED", "2026-09-19 10:05"),
         AdminBookingDto("b-003", "m-003", "محمد کریمی", 2, "CrossFit", "امروز", "20:00", "CONFIRMED", "2026-09-19 10:10")
     )
+    init {
+        loadSharedState()
+    }
+
+    private fun persistSharedState() {
+        val editor = preferences.edit()
+        classes.forEach { cls -> editor.putInt("admin_class_" + cls.id + "_booked", cls.booked) }
+        subscriptions.filter { sub -> sub.memberId == "m-001" }.forEach { sub ->
+            editor.putInt("admin_m001_remaining", sub.remainingSessions)
+        }
+        editor.apply()
+    }
+
+    private fun loadSharedState() {
+        classes.indices.forEach { i ->
+            val cls = classes[i]
+            val stored = preferences.getInt("admin_class_" + cls.id + "_booked", -1)
+            if (stored >= 0) classes[i] = cls.copy(booked = stored)
+        }
+        val storedRemaining = preferences.getInt("admin_m001_remaining", -1)
+        if (storedRemaining >= 0) {
+            val i = subscriptions.indexOfFirst { sub -> sub.memberId == "m-001" }
+            if (i >= 0) subscriptions[i] = subscriptions[i].copy(remainingSessions = storedRemaining)
+        }
+    }
+
     private val attendance = mutableListOf<AttendanceDto>()
     private val coaches = listOf(
         CoachDto("c-001", "مربی Wolf", "09121111111"),
@@ -56,6 +83,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
             cls.day, cls.time, "CONFIRMED", "2026-09-19"
         )
         bookings += booking
+        persistSharedState()
         return booking
     }
 
@@ -78,6 +106,7 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
                 remainingSessions = (sub.remainingSessions + 1).coerceAtMost(sub.totalSessions)
             )
         }
+        persistSharedState()
         return true
     }
     override fun getAttendance(date: String) = attendance.filter { it.date == date }.toList()
