@@ -20,11 +20,11 @@ class DemoRepository(context: Context) : WolfDenRepository {
         name = "عضو Wolf Den",
         phone = preferences.getString("phone", "09123456789") ?: "09123456789",
         subscription = Subscription(
-            plan = "۱۲ جلسه در ماه",
-            totalSessions = 12,
-            remainingSessions = preferences.getInt("admin_m001_remaining", preferences.getInt("remaining_sessions", 8)),
-            status = SubscriptionStatus.ACTIVE,
-            expiresAt = "2026-10-01"
+            plan = preferences.getString("admin_sub_m-001_plan", "۱۲ جلسه در ماه") ?: "۱۲ جلسه در ماه",
+            totalSessions = preferences.getInt("admin_sub_m-001_total", 12),
+            remainingSessions = preferences.getInt("admin_sub_m-001_remaining", preferences.getInt("remaining_sessions", 8)),
+            status = if (preferences.getString("admin_sub_m-001_status", "ACTIVE") == "ACTIVE") SubscriptionStatus.ACTIVE else SubscriptionStatus.SUSPENDED,
+            expiresAt = preferences.getString("admin_sub_m-001_expires", "2026-10-01") ?: "2026-10-01"
         )
     )
 
@@ -57,6 +57,7 @@ class DemoRepository(context: Context) : WolfDenRepository {
 
     override fun bookClass(classId: Int): Boolean {
         val target = classes.firstOrNull { it.id == classId } ?: return false
+        if (member.subscription.status != SubscriptionStatus.ACTIVE) return false
         if (target.available <= 0) return false
         if (bookings.any { it.classId == classId && it.status == BookingStatus.CONFIRMED }) return false
         if (member.subscription.remainingSessions <= 0) return false
