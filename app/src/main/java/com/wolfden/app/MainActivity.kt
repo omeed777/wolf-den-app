@@ -979,6 +979,8 @@ private fun MainShell(viewModel: WolfDenViewModel, onLogout: () -> Unit) {
                     Modifier.padding(padding),
                     uiState.classes,
                     uiState.bookings,
+                    uiState.member?.subscription?.status == SubscriptionStatus.ACTIVE,
+                    uiState.member?.subscription?.remainingSessions ?: 0,
                     viewModel::bookClass,
                     viewModel::cancelBooking
                 )
@@ -995,6 +997,7 @@ private fun MainShell(viewModel: WolfDenViewModel, onLogout: () -> Unit) {
                     uiState.member?.subscription?.remainingSessions ?: 0,
                     uiState.member?.subscription?.totalSessions ?: 0,
                     uiState.member?.subscription?.expiresAt ?: "-",
+                    uiState.member?.subscription?.status ?: SubscriptionStatus.SUSPENDED,
                     uiState.bookings.size
                 )
             }
@@ -1058,6 +1061,8 @@ private fun ClassesScreen(
     modifier: Modifier,
     classes: List<TrainingClass>,
     bookings: List<Booking>,
+    subscriptionActive: Boolean,
+    remainingSessions: Int,
     onBook: (Int) -> Unit,
     onCancel: (Int) -> Unit
 ) {
@@ -1066,6 +1071,11 @@ private fun ClassesScreen(
         Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black)
         Text("کلاس موردنظر را انتخاب و رزرو کن.", color = WolfMuted)
         Text("ظرفیت و وضعیت رزرو لحظه‌ای نمایش داده می‌شود.", color = WolfMuted, fontSize = 12.sp)
+        if (!subscriptionActive) {
+            Text("اشتراک شما فعال نیست؛ تا فعال شدن اشتراک امکان رزرو کلاس ندارید.", color = WolfGoldBright, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        } else if (remainingSessions <= 0) {
+            Text("جلسه قابل استفاده ندارید؛ برای رزرو کلاس ابتدا اشتراک خود را تمدید کنید.", color = WolfGoldBright, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        }
         Spacer(Modifier.height(16.dp))
         if (classes.isEmpty()) {
             Text("کلاسی برای نمایش وجود ندارد.", color = WolfMuted)
@@ -1073,9 +1083,12 @@ private fun ClassesScreen(
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(classes, key = { it.id }) { trainingClass ->
                     val bookedByMe = trainingClass.id in bookedIds
-                    ClassCard(trainingClass, bookedByMe) {
-                        if (bookedByMe) onCancel(trainingClass.id) else onBook(trainingClass.id)
-                    }
+                    ClassCard(
+                        trainingClass = trainingClass,
+                        bookedByMe = bookedByMe,
+                        canBook = subscriptionActive && remainingSessions > 0,
+                        onBooking = { if (bookedByMe) onCancel(trainingClass.id) else onBook(trainingClass.id) }
+                    )
                 }
             }
         }
@@ -1125,7 +1138,12 @@ private fun MyBookingsScreen(
 }
 
 @Composable
-private fun ClassCard(trainingClass: TrainingClass, bookedByMe: Boolean, onBooking: () -> Unit) {
+private fun ClassCard(
+    trainingClass: TrainingClass,
+    bookedByMe: Boolean,
+    canBook: Boolean,
+    onBooking: () -> Unit
+) {
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1141,7 +1159,7 @@ private fun ClassCard(trainingClass: TrainingClass, bookedByMe: Boolean, onBooki
             Spacer(Modifier.height(10.dp))
             Button(
                 onClick = onBooking,
-                enabled = bookedByMe || trainingClass.available > 0,
+                enabled = bookedByMe || (canBook && trainingClass.available > 0),
                 modifier = Modifier.fillMaxWidth()
             ) { Text(if (bookedByMe) "لغو رزرو" else "رزرو کلاس") }
         }
@@ -1156,6 +1174,7 @@ private fun SubscriptionScreen(
     remainingSessions: Int,
     totalSessions: Int,
     expiresAt: String,
+    status: SubscriptionStatus,
     bookingCount: Int
 ) {
     Column(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -1168,7 +1187,16 @@ private fun SubscriptionScreen(
                 Spacer(Modifier.height(10.dp))
                 Text("جلسات باقی‌مانده: $remainingSessions از $totalSessions")
                 Text("تاریخ پایان: $expiresAt")
-                Text("وضعیت: فعال", color = WolfGoldBright, fontWeight = FontWeight.Bold)
+                val statusText = when (status) {
+                    SubscriptionStatus.ACTIVE -> "فعال"
+                    SubscriptionStatus.SUSPENDED -> "معلق"
+                }
+                Text("وضعیت: $statusText", color = if (status == SubscriptionStatus.ACTIVE) WolfGoldBright else WolfMuted, fontWeight = FontWeight.Bold)
+                if (status != SubscriptionStatus.ACTIVE) {
+                    Text("برای رزرو کلاس باید اشتراک فعال داشته باشید.", color = WolfGoldBright, fontSize = 13.sp)
+                } else if (remainingSessions <= 0) {
+                    Text("جلسات قابل استفاده شما تمام شده است.", color = WolfGoldBright, fontSize = 13.sp)
+                }
             }
         }
         if (bookingCount > 0) Text("رزروهای فعال: $bookingCount جلسه")
