@@ -12,6 +12,9 @@ interface WolfDenAdminApi {
     fun getSubscriptions(accessToken: String): List<AdminSubscriptionDto>
     fun getClasses(accessToken: String): List<TrainingClassDto>
     fun getCoaches(accessToken: String): List<CoachDto>
+    fun createCoach(accessToken: String, request: CreateCoachRequest): CoachDto
+    fun updateCoach(accessToken: String, coachId: String, request: UpdateCoachRequest): CoachDto
+    fun deleteCoach(accessToken: String, coachId: String): Boolean
     fun getBookings(accessToken: String): List<AdminBookingDto>
     fun cancelBooking(accessToken: String, bookingId: String): Boolean
     fun createBooking(accessToken: String, request: AdminCreateBookingRequest): AdminBookingDto
@@ -48,6 +51,10 @@ data class CoachDto(
     val name: String,
     val phone: String
 )
+
+data class CreateCoachRequest(val name: String, val phone: String)
+
+data class UpdateCoachRequest(val name: String, val phone: String)
 
 data class AdminCreateBookingRequest(
     val memberId: String,
