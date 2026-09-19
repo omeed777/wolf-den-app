@@ -167,10 +167,22 @@ class DemoRepository(context: Context) : WolfDenRepository {
             .filter { it.status == BookingStatus.CONFIRMED }
             .forEach { confirmedBookings.put(it.classId) }
 
+        val classJson = JSONArray()
+        classes.forEach { cls ->
+            classJson.put(JSONObject()
+                .put("id", cls.id)
+                .put("title", cls.title)
+                .put("day", cls.day)
+                .put("time", cls.time)
+                .put("capacity", cls.capacity)
+                .put("booked", cls.booked)
+                .put("coach", cls.coach))
+        }
         preferences.edit()
             .putInt("remaining_sessions", member.subscription.remainingSessions)
             .putInt("admin_sub_m-001_remaining", member.subscription.remainingSessions)
             .putString("booked_class_ids", confirmedBookings.toString())
+            .putString("admin_classes", classJson.toString())
             .apply()
     }
 
