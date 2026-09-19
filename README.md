@@ -63,7 +63,7 @@ No real backend URL or credentials are embedded in the client until the producti
 
 ## Current status
 
-The Android demo is now functionally wired end-to-end for local testing:
+The Android V1.1 demo is functionally wired end-to-end for local testing:
 
 - Member login/demo OTP
 - Member dashboard
