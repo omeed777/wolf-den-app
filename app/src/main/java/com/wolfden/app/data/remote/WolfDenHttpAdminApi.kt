@@ -66,6 +66,13 @@ class WolfDenHttpAdminApi(
             AttendanceDto(o.requiredString("id"), o.requiredString("memberId"), o.getInt("classId"), o.requiredString("date"), o.optBoolean("present"))
         }
 
+    override fun updateMember(accessToken: String, memberId: String, request: UpdateMemberRequest): AdminMemberDto =
+        this.request("PUT", config.membersPath + "/" + memberId,
+            JSONObject().put("name", request.name).put("phone", request.phone).put("status", request.status),
+            accessToken).let {
+                AdminMemberDto(it.requiredString("id"), it.requiredString("name"), it.requiredString("phone"), it.requiredString("status"))
+            }
+
     override fun createMember(accessToken: String, request: CreateMemberRequest): AdminMemberDto =
         this.request("POST", config.membersPath, JSONObject().put("name", request.name).put("phone", request.phone), accessToken)
             .let { AdminMemberDto(it.requiredString("id"), it.requiredString("name"), it.requiredString("phone"), it.requiredString("status")) }
