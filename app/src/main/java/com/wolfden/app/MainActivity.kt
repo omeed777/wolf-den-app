@@ -410,7 +410,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
                 if (index >= 0) subscriptions[index] = updated
             }
             3 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
-            4 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, true)); showAttendance = false })
+            4 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false })
             else -> AdminCoachesScreen(Modifier.padding(padding), repository.getCoaches())
         }
     }
