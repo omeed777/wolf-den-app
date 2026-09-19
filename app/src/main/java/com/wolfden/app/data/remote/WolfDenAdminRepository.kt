@@ -10,6 +10,7 @@ interface WolfDenAdminRepository {
     fun createBooking(request: AdminCreateBookingRequest): AdminBookingDto
     fun getAttendance(date: String): List<AttendanceDto>
     fun createMember(request: CreateMemberRequest): AdminMemberDto
+    fun updateMember(memberId: String, request: UpdateMemberRequest): AdminMemberDto
     fun updateSubscription(memberId: String, request: UpdateSubscriptionRequest): AdminSubscriptionDto
     fun createClass(request: CreateClassRequest): TrainingClassDto
     fun recordAttendance(request: RecordAttendanceRequest): AttendanceDto
@@ -28,6 +29,7 @@ class RemoteWolfDenAdminRepository(
     override fun createBooking(request: AdminCreateBookingRequest) = api.createBooking(accessToken, request)
     override fun getAttendance(date: String) = api.getAttendance(accessToken, date)
     override fun createMember(request: CreateMemberRequest) = api.createMember(accessToken, request)
+    override fun updateMember(memberId: String, request: UpdateMemberRequest) = api.updateMember(accessToken, memberId, request)
     override fun updateSubscription(memberId: String, request: UpdateSubscriptionRequest) =
         api.updateSubscription(accessToken, memberId, request)
     override fun createClass(request: CreateClassRequest) = api.createClass(accessToken, request)
