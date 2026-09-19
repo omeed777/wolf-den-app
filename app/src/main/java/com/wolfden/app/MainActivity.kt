@@ -391,7 +391,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
             colors = TopAppBarDefaults.topAppBarColors(containerColor = WolfBlack)
         ) },
         bottomBar = { NavigationBar {
-            listOf("اعضا", "اشتراک‌ها", "کلاس‌ها", "حضور").forEachIndexed { i, label ->
+            listOf("اعضا", "اشتراک‌ها", "کلاس‌ها", "حضور", "مربی‌ها").forEachIndexed { i, label ->
                 NavigationBarItem(selected = tab == i, onClick = { tab = i },
                     icon = { Text(if (i == 0) "●" else if (i == 1) "◆" else "▣") },
                     label = { Text(label) })
@@ -409,7 +409,8 @@ private fun AdminDashboard(onBack: () -> Unit) {
                 if (index >= 0) subscriptions[index] = updated
             }
             2 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
-            else -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, true)); showAttendance = false })
+            3 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, true)); showAttendance = false })
+            else -> AdminCoachesScreen(Modifier.padding(padding), repository.getCoaches())
         }
     }
 
@@ -459,6 +460,22 @@ private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDt
         item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("برنامه کلاس‌ها و ظرفیت", color = WolfMuted) }; Button(onClick = onAdd) { Text("کلاس جدید") } } }
         items(classes, key = { it.id }) { trainingClass ->
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(trainingClass.day + " • " + trainingClass.time, color = WolfMuted); Text("مربی: " + trainingClass.coach); Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity, color = WolfGoldBright) } }
+        }
+    }
+}
+
+@Composable
+private fun AdminCoachesScreen(modifier: Modifier, coaches: List<CoachDto>) {
+    Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("مربی‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black)
+        Text("مربی‌های ثبت‌شده Wolf Den", color = WolfMuted)
+        coaches.forEach { coach ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(coach.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(coach.phone, color = WolfMuted)
+                }
+            }
         }
     }
 }
