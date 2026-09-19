@@ -36,6 +36,7 @@ import com.wolfden.app.data.remote.WolfDenAuthService
 import com.wolfden.app.data.remote.WolfDenHttpApi
 import com.wolfden.app.data.remote.DemoWolfDenAdminRepository
 import com.wolfden.app.data.remote.AdminMemberDto
+import com.wolfden.app.data.remote.AdminCreateBookingRequest
 import com.wolfden.app.data.remote.AdminSubscriptionDto
 import com.wolfden.app.data.remote.TrainingClassDto
 import com.wolfden.app.data.remote.CreateMemberRequest
@@ -380,6 +381,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
     var showAddMember by rememberSaveable { mutableStateOf(false) }
     var showAddClass by rememberSaveable { mutableStateOf(false) }
     var showAttendance by rememberSaveable { mutableStateOf(false) }
+    var showAddBooking by rememberSaveable { mutableStateOf(false) }
     val bookings = remember { mutableStateListOf<AdminBookingDto>().apply { addAll(repository.getBookings()) } }
     val members = remember { mutableStateListOf<AdminMemberDto>().apply { addAll(repository.getMembers()) } }
     val subscriptions = remember { mutableStateListOf<AdminSubscriptionDto>().apply { addAll(repository.getSubscriptions()) } }
@@ -412,7 +414,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
                 if (index >= 0) subscriptions[index] = updated
             }
             3 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
-            4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onCancel = { bookingId -> if (repository.cancelBooking(bookingId)) bookings.removeAll { it.id == bookingId } })
+            4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onAdd = { showAddBooking = true }, onCancel = { bookingId -> if (repository.cancelBooking(bookingId)) bookings.removeAll { it.id == bookingId } })
             5 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false })
             else -> AdminCoachesScreen(Modifier.padding(padding), repository.getCoaches())
         }
@@ -427,6 +429,25 @@ private fun AdminDashboard(onBack: () -> Unit) {
             }
         )
     }
+    if (showAddBooking) {
+        AdminCreateBookingDialog(
+            members = members,
+            classes = classes,
+            subscriptions = subscriptions,
+            bookings = bookings,
+            onDismiss = { showAddBooking = false },
+            onSave = { memberId, classId ->
+                val booking = repository.createBooking(AdminCreateBookingRequest(memberId, classId))
+                bookings += booking
+                val classIndex = classes.indexOfFirst { it.id == classId }
+                if (classIndex >= 0) classes[classIndex] = classes[classIndex].copy(booked = classes[classIndex].booked + 1)
+                val subIndex = subscriptions.indexOfFirst { it.memberId == memberId }
+                if (subIndex >= 0) subscriptions[subIndex] = subscriptions[subIndex].copy(remainingSessions = (subscriptions[subIndex].remainingSessions - 1).coerceAtLeast(0))
+                showAddBooking = false
+            }
+        )
+    }
+
     if (showAddClass) {
         AddClassDialog(
             onDismiss = { showAddClass = false },
@@ -582,13 +603,19 @@ private fun AdminStatCard(title: String, value: String) {
 private fun AdminBookingsScreen(
     modifier: Modifier,
     bookings: List<AdminBookingDto>,
+    onAdd: () -> Unit,
     onCancel: (String) -> Unit
 ) {
     var selected by remember { mutableStateOf<AdminBookingDto?>(null) }
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Text("رزروهای کلاس", fontSize = 28.sp, fontWeight = FontWeight.Black)
-            Text("مشاهده و مدیریت رزرو اعضا", color = WolfMuted)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("رزروهای کلاس", fontSize = 28.sp, fontWeight = FontWeight.Black)
+                    Text("مشاهده و مدیریت رزرو اعضا", color = WolfMuted)
+                }
+                Button(onClick = onAdd) { Text("رزرو دستی") }
+            }
         }
         items(bookings, key = { it.id }) { booking ->
             Card(Modifier.fillMaxWidth().clickable { selected = booking }, RoundedCornerShape(18.dp)) {
@@ -605,9 +632,7 @@ private fun AdminBookingsScreen(
     selected?.let { booking ->
         AlertDialog(
             onDismissRequest = { selected = null },
-            confirmButton = {
-                TextButton(onClick = { onCancel(booking.id); selected = null }) { Text("لغو رزرو", color = Color(0xFFFF6B6B)) }
-            },
+            confirmButton = { TextButton(onClick = { onCancel(booking.id); selected = null }) { Text("لغو رزرو", color = Color(0xFFFF6B6B)) } },
             dismissButton = { TextButton(onClick = { selected = null }) { Text("بستن") } },
             title = { Text("جزئیات رزرو") },
             text = { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -662,6 +687,55 @@ private fun AdminAttendanceScreen(modifier: Modifier, members: List<AdminMemberD
             Text("ثبت حضور")
         }
     }
+}
+
+@Composable
+private fun AdminCreateBookingDialog(
+    members: List<AdminMemberDto>,
+    classes: List<TrainingClassDto>,
+    subscriptions: List<AdminSubscriptionDto>,
+    bookings: List<AdminBookingDto>,
+    onDismiss: () -> Unit,
+    onSave: (String, Int) -> Unit
+) {
+    var memberId by remember { mutableStateOf(members.firstOrNull()?.id ?: "") }
+    var classId by remember { mutableIntStateOf(classes.firstOrNull()?.id ?: 0) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("رزرو دستی برای عضو") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("انتخاب عضو", fontWeight = FontWeight.Bold)
+                members.forEach { member ->
+                    val sub = subscriptions.firstOrNull { it.memberId == member.id }
+                    Row(Modifier.fillMaxWidth().clickable { memberId = member.id }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = memberId == member.id, onClick = { memberId = member.id })
+                        Column { Text(member.name); Text("${sub?.remainingSessions ?: 0} جلسه باقی‌مانده", color = WolfMuted, fontSize = 12.sp) }
+                    }
+                }
+                Text("انتخاب کلاس", fontWeight = FontWeight.Bold)
+                classes.forEach { cls ->
+                    val duplicate = bookings.any { it.memberId == memberId && it.classId == cls.id && it.status == "CONFIRMED" }
+                    val enabled = cls.booked < cls.capacity && !duplicate && ((subscriptions.firstOrNull { it.memberId == memberId }?.remainingSessions ?: 0) > 0)
+                    Row(Modifier.fillMaxWidth().clickable(enabled = enabled) { classId = cls.id }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = classId == cls.id, onClick = { if (enabled) classId = cls.id }, enabled = enabled)
+                        Column {
+                            Text(cls.title + " • " + cls.day + " • " + cls.time, color = if (enabled) WolfText else WolfMuted)
+                            Text("${cls.booked}/${cls.capacity}", color = WolfMuted, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            val selectedClass = classes.firstOrNull { it.id == classId }
+            val sub = subscriptions.firstOrNull { it.memberId == memberId }
+            val duplicate = bookings.any { it.memberId == memberId && it.classId == classId && it.status == "CONFIRMED" }
+            val enabled = memberId.isNotBlank() && selectedClass != null && selectedClass.booked < selectedClass.capacity && sub?.status == "ACTIVE" && sub.remainingSessions > 0 && !duplicate
+            Button(enabled = enabled, onClick = { onSave(memberId, classId) }) { Text("ثبت رزرو") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
+    )
 }
 
 @Composable
