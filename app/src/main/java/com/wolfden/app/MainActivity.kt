@@ -351,6 +351,53 @@ private fun OtpScreen(
 }
 
 @Composable
+private fun AdminDashboard() {
+    val context = LocalContext.current
+    val repository = remember { DemoWolfDenAdminRepository(context) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val members = remember { mutableStateListOf<AdminMemberDto>().apply { addAll(repository.getMembers()) } }
+    val subscriptions = remember { mutableStateListOf<AdminSubscriptionDto>().apply { addAll(repository.getSubscriptions()) } }
+    val classes = remember { mutableStateListOf<TrainingClassDto>().apply { addAll(repository.getClasses()) } }
+    Scaffold(containerColor = WolfSurface, topBar = { TopAppBar(title = { Text("مدیریت Wolf Den", fontWeight = FontWeight.Black) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = WolfBlack)) }, bottomBar = { NavigationBar { listOf("اعضا", "اشتراک‌ها", "کلاس‌ها").forEachIndexed { i, label -> NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Text(if (i == 0) "●" else if (i == 1) "◆" else "▣") }, label = { Text(label) }) } } }) { padding ->
+        when (tab) {
+            0 -> AdminMembersScreen(Modifier.padding(padding), members)
+            1 -> AdminSubscriptionsScreen(Modifier.padding(padding), subscriptions)
+            else -> AdminClassesScreen(Modifier.padding(padding), classes)
+        }
+    }
+}
+
+@Composable
+private fun AdminMembersScreen(modifier: Modifier, members: List<AdminMemberDto>) {
+    LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { Text("اعضای باشگاه", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("مدیریت اعضای Wolf Den", color = WolfMuted) }
+        items(members, key = { it.id }) { member ->
+            Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(member.name, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(member.phone, color = WolfMuted); Text("وضعیت: " + member.status, color = WolfGoldBright) } }
+        }
+    }
+}
+
+@Composable
+private fun AdminSubscriptionsScreen(modifier: Modifier, subscriptions: List<AdminSubscriptionDto>) {
+    LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { Text("اشتراک‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("وضعیت و جلسات باقی‌مانده اعضا", color = WolfMuted) }
+        items(subscriptions, key = { it.id }) { subscription ->
+            Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(subscription.plan, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text("عضو: " + subscription.memberId, color = WolfMuted); Text("جلسات: " + subscription.remainingSessions + " از " + subscription.totalSessions); Text("انقضا: " + subscription.expiresAt, color = WolfMuted); Text("وضعیت: " + subscription.status, color = WolfGoldBright) } }
+        }
+    }
+}
+
+@Composable
+private fun AdminClassesScreen(modifier: Modifier, classes: List<TrainingClassDto>) {
+    LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { Text("کلاس‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black); Text("برنامه کلاس‌ها و ظرفیت", color = WolfMuted) }
+        items(classes, key = { it.id }) { trainingClass ->
+            Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) { Column(Modifier.padding(16.dp)) { Text(trainingClass.title, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(trainingClass.day + " • " + trainingClass.time, color = WolfMuted); Text("مربی: " + trainingClass.coach); Text("ظرفیت: " + trainingClass.booked + " / " + trainingClass.capacity, color = WolfGoldBright) } }
+        }
+    }
+}
+
+@Composable
 private fun MainShell(viewModel: WolfDenViewModel, onLogout: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
     var tab by rememberSaveable { mutableIntStateOf(0) }
