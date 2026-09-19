@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -277,7 +276,7 @@ private fun LoginScreen(
     onOpenAdmin: () -> Unit
 ) {
     Column(
-        Modifier.fillMaxSize().padding(24.dp).background(WolfBlack),
+        Modifier.fillMaxSize().background(WolfBlack).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -1250,45 +1249,3 @@ private fun SubscriptionScreen(
     }
 }
 
-@Composable
-private fun WolfBrand(size: androidx.compose.ui.unit.Dp) {
-    Canvas(Modifier.size(size)) {
-        val w = size.toPx()
-        val h = size.toPx()
-        val outer = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.50f, h * 0.05f)
-            lineTo(w * 0.17f, h * 0.24f)
-            lineTo(w * 0.08f, h * 0.76f)
-            lineTo(w * 0.28f, h * 0.67f)
-            lineTo(w * 0.50f, h * 0.95f)
-            lineTo(w * 0.72f, h * 0.67f)
-            lineTo(w * 0.92f, h * 0.76f)
-            lineTo(w * 0.83f, h * 0.24f)
-            close()
-        }
-        drawPath(outer, color = WolfGoldBright)
-
-        val inner = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.50f, h * 0.20f)
-            lineTo(w * 0.28f, h * 0.33f)
-            lineTo(w * 0.25f, h * 0.61f)
-            lineTo(w * 0.50f, h * 0.83f)
-            lineTo(w * 0.75f, h * 0.61f)
-            lineTo(w * 0.72f, h * 0.33f)
-            close()
-        }
-        drawPath(inner, color = WolfBlack)
-
-        drawCircle(WolfGoldBright, w * 0.045f, androidx.compose.ui.geometry.Offset(w * 0.39f, h * 0.47f))
-        drawCircle(WolfGoldBright, w * 0.045f, androidx.compose.ui.geometry.Offset(w * 0.61f, h * 0.47f))
-
-        val muzzle = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.42f, h * 0.64f)
-            lineTo(w * 0.50f, h * 0.71f)
-            lineTo(w * 0.58f, h * 0.64f)
-            lineTo(w * 0.50f, h * 0.79f)
-            close()
-        }
-        drawPath(muzzle, color = WolfGold)
-    }
-}
