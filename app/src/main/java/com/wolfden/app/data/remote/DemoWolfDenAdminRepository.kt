@@ -33,6 +33,32 @@ class DemoWolfDenAdminRepository(context: Context) : WolfDenAdminRepository {
     override fun getClasses() = classes.toList()
     override fun getCoaches() = coaches
     override fun getBookings() = bookings.filter { it.status == "CONFIRMED" }.toList()
+    override fun createBooking(request: AdminCreateBookingRequest): AdminBookingDto {
+        if (bookings.any { it.memberId == request.memberId && it.classId == request.classId && it.status == "CONFIRMED" }) {
+            throw IllegalStateException("این عضو قبلاً این کلاس را رزرو کرده است.")
+        }
+        val classIndex = classes.indexOfFirst { it.id == request.classId }
+        if (classIndex < 0) throw IllegalArgumentException("کلاس پیدا نشد.")
+        val cls = classes[classIndex]
+        if (cls.booked >= cls.capacity) throw IllegalStateException("ظرفیت کلاس تکمیل است.")
+
+        val subIndex = subscriptions.indexOfFirst { it.memberId == request.memberId }
+        if (subIndex < 0) throw IllegalStateException("عضو اشتراک فعال ندارد.")
+        val sub = subscriptions[subIndex]
+        if (sub.status != "ACTIVE" || sub.remainingSessions <= 0) throw IllegalStateException("جلسه قابل استفاده ندارد.")
+
+        classes[classIndex] = cls.copy(booked = cls.booked + 1)
+        subscriptions[subIndex] = sub.copy(remainingSessions = sub.remainingSessions - 1)
+        val member = members.firstOrNull { it.id == request.memberId }
+            ?: throw IllegalArgumentException("عضو پیدا نشد.")
+        val booking = AdminBookingDto(
+            "b-" + System.currentTimeMillis(), member.id, member.name, cls.id, cls.title,
+            cls.day, cls.time, "CONFIRMED", "2026-09-19"
+        )
+        bookings += booking
+        return booking
+    }
+
     override fun cancelBooking(bookingId: String): Boolean {
         val i = bookings.indexOfFirst { it.id == bookingId && it.status == "CONFIRMED" }
         if (i < 0) return false
