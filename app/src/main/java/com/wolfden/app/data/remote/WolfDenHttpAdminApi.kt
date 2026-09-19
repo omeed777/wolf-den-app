@@ -33,6 +33,14 @@ class WolfDenHttpAdminApi(
             CoachDto(o.requiredString("id"), o.requiredString("name"), o.requiredString("phone"))
         }
 
+    override fun getBookings(accessToken: String): List<AdminBookingDto> =
+        request("GET", config.bookingsPath, token = accessToken).objects("bookings") { o ->
+            AdminBookingDto(o.requiredString("id"), o.requiredString("memberId"), o.requiredString("memberName"), o.getInt("classId"), o.requiredString("classTitle"), o.requiredString("day"), o.requiredString("time"), o.requiredString("status"), o.requiredString("createdAt"))
+        }
+
+    override fun cancelBooking(accessToken: String, bookingId: String): Boolean =
+        request("DELETE", config.bookingsPath + "/" + bookingId, token = accessToken).optBoolean("success", true)
+
     override fun getAttendance(accessToken: String, date: String): List<AttendanceDto> =
         request("GET", config.attendancePath + "?date=" + java.net.URLEncoder.encode(date, "UTF-8"), token = accessToken).objects("attendance") { o ->
             AttendanceDto(o.requiredString("id"), o.requiredString("memberId"), o.getInt("classId"), o.requiredString("date"), o.optBoolean("present"))
@@ -101,7 +109,8 @@ data class WolfDenAdminApiConfig(
     val subscriptionsPath: String = "/admin/subscriptions",
     val classesPath: String = "/admin/classes",
     val coachesPath: String = "/admin/coaches",
-    val attendancePath: String = "/admin/attendance"
+    val attendancePath: String = "/admin/attendance",
+    val bookingsPath: String = "/admin/bookings"
 ) {
     init { require(baseUrl.isNotBlank()) { "Admin API baseUrl must not be blank" } }
     fun url(path: String): String = baseUrl.trimEnd('/') + "/" + path.trimStart('/')
