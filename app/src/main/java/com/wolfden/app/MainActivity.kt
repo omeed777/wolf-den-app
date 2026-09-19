@@ -338,7 +338,7 @@ private fun OtpScreen(
     productionMode: Boolean
 ) {
     Column(
-        Modifier.fillMaxSize().padding(24.dp).background(WolfBlack),
+        Modifier.fillMaxSize().background(WolfBlack).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
