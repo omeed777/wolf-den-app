@@ -1,5 +1,6 @@
 package com.wolfden.app
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,8 +26,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.wolfden.app.model.Booking
+import com.wolfden.app.data.DemoRepository
+import com.wolfden.app.data.remote.RemoteWolfDenAuthService
+import com.wolfden.app.data.remote.RemoteWolfDenRepository
+import com.wolfden.app.data.remote.SharedPreferencesAccessTokenStore
+import com.wolfden.app.data.remote.WolfDenApiConfig
+import com.wolfden.app.data.remote.WolfDenAuthService
+import com.wolfden.app.data.remote.WolfDenHttpApi
 import com.wolfden.app.model.TrainingClass
 import com.wolfden.app.viewmodel.WolfDenViewModel
+import com.wolfden.app.viewmodel.WolfDenViewModelFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val WolfBlack = Color(0xFF080808)
 private val WolfSurface = Color(0xFF111111)
@@ -49,19 +61,59 @@ private fun WolfDenApp() {
     val preferences = remember {
         context.getSharedPreferences("wolf_den_session", android.content.Context.MODE_PRIVATE)
     }
-    var loggedIn by rememberSaveable { mutableStateOf(preferences.getBoolean("logged_in", false)) }
-    var phone by rememberSaveable { mutableStateOf(preferences.getString("phone", "") ?: "") }
-    val viewModel: WolfDenViewModel = viewModel()
+    val tokenStore = remember { SharedPreferencesAccessTokenStore(context) }
+    val apiBaseUrl = BuildConfig.WOLF_DEN_API_BASE_URL.trim()
+    val productionMode = apiBaseUrl.isNotBlank()
+    val api = remember(apiBaseUrl) {
+        if (apiBaseUrl.isBlank()) null
+        else WolfDenHttpApi(WolfDenApiConfig(apiBaseUrl))
+    }
+    val authService: WolfDenAuthService? = remember(api) {
+        api?.let { RemoteWolfDenAuthService(it, tokenStore) }
+    }
 
-    fun login() {
-        preferences.edit().putBoolean("logged_in", true).putString("phone", phone).apply()
+    var loggedIn by rememberSaveable {
+        mutableStateOf(
+            preferences.getBoolean("logged_in", false) &&
+                (!productionMode || !tokenStore.get().isNullOrBlank())
+        )
+    }
+    var phone by rememberSaveable {
+        mutableStateOf(preferences.getString("phone", "") ?: "")
+    }
+    var memberId by rememberSaveable {
+        mutableStateOf(preferences.getString("member_id", "") ?: "")
+    }
+    var accessToken by remember { mutableStateOf(tokenStore.get()) }
+
+    fun loginDemo() {
+        preferences.edit()
+            .putBoolean("logged_in", true)
+            .putString("phone", phone)
+            .remove("member_id")
+            .apply()
         loggedIn = true
+        accessToken = null
+    }
+
+    fun loginProduction(auth: com.wolfden.app.data.remote.AuthResponse) {
+        preferences.edit()
+            .putBoolean("logged_in", true)
+            .putString("phone", phone)
+            .putString("member_id", auth.memberId)
+            .apply()
+        loggedIn = true
+        memberId = auth.memberId
+        accessToken = auth.accessToken
     }
 
     fun logout() {
         preferences.edit().clear().apply()
+        tokenStore.clear()
         loggedIn = false
         phone = ""
+        memberId = ""
+        accessToken = null
     }
 
     MaterialTheme(
@@ -77,22 +129,127 @@ private fun WolfDenApp() {
         )
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            if (!loggedIn) LoginFlow(phone, { phone = it }, ::login)
-            else MainShell(viewModel, onLogout = ::logout)
+            if (!loggedIn) {
+                LoginFlow(
+                    phone = phone,
+                    onPhoneChange = { phone = it },
+                    authService = authService,
+                    productionMode = productionMode,
+                    onDemoLogin = ::loginDemo,
+                    onProductionLogin = ::loginProduction
+                )
+            } else {
+                val repository = remember(accessToken, memberId, productionMode) {
+                    if (productionMode && !accessToken.isNullOrBlank() && memberId.isNotBlank()) {
+                        RemoteWolfDenRepository(
+                            api = api!!,
+                            accessToken = accessToken!!,
+                            memberId = memberId
+                        )
+                    } else {
+                        DemoRepository(context)
+                    }
+                }
+                val factory = remember(repository) {
+                    WolfDenViewModelFactory(
+                        application = context.applicationContext as Application,
+                        repository = repository
+                    )
+                }
+                val viewModel: WolfDenViewModel = viewModel(
+                    key = if (productionMode) "wolf-den-production" else "wolf-den-demo",
+                    factory = factory
+                )
+                MainShell(viewModel, onLogout = ::logout)
+            }
         }
     }
 }
 
 @Composable
-private fun LoginFlow(phone: String, onPhoneChange: (String) -> Unit, onLogin: () -> Unit) {
+private fun LoginFlow(
+    phone: String,
+    onPhoneChange: (String) -> Unit,
+    authService: WolfDenAuthService?,
+    productionMode: Boolean,
+    onDemoLogin: () -> Unit,
+    onProductionLogin: (com.wolfden.app.data.remote.AuthResponse) -> Unit
+) {
     var otpStep by rememberSaveable { mutableStateOf(false) }
     var otp by rememberSaveable { mutableStateOf("") }
-    if (!otpStep) LoginScreen(phone, onPhoneChange) { otpStep = true }
-    else OtpScreen(phone, otp, { otp = it }, onLogin) { otpStep = false }
+    var loading by rememberSaveable { mutableStateOf(false) }
+    var error by rememberSaveable { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    fun requestOtp() {
+        error = null
+        if (!productionMode || authService == null) {
+            otpStep = true
+            return
+        }
+        loading = true
+        scope.launch {
+            try {
+                val success = withContext(Dispatchers.IO) { authService.requestOtp(phone) }
+                if (success) otpStep = true
+                else error = "ارسال کد تایید انجام نشد."
+            } catch (e: Exception) {
+                error = e.message?.take(140) ?: "ارتباط با سرور برقرار نشد."
+            } finally {
+                loading = false
+            }
+        }
+    }
+
+    fun verifyOtp() {
+        error = null
+        if (!productionMode || authService == null) {
+            onDemoLogin()
+            return
+        }
+        loading = true
+        scope.launch {
+            try {
+                val auth = withContext(Dispatchers.IO) {
+                    authService.verifyOtp(phone, otp)
+                }
+                onProductionLogin(auth)
+            } catch (e: Exception) {
+                error = e.message?.take(140) ?: "کد تایید معتبر نیست."
+            } finally {
+                loading = false
+            }
+        }
+    }
+
+    if (!otpStep) {
+        LoginScreen(phone, onPhoneChange, ::requestOtp, loading, error, productionMode)
+    } else {
+        OtpScreen(
+            phone = phone,
+            otp = otp,
+            onOtpChange = { otp = it },
+            onVerify = ::verifyOtp,
+            onBack = {
+                otpStep = false
+                error = null
+            },
+            loading = loading,
+            error = error,
+            productionMode = productionMode
+        )
+    }
 }
 
 @Composable
-private fun LoginScreen(phone: String, onPhoneChange: (String) -> Unit, onContinue: () -> Unit) {
+private fun LoginScreen(
+    phone: String,
+    onPhoneChange: (String) -> Unit,
+    onContinue: () -> Unit,
+    loading: Boolean,
+    error: String?,
+    productionMode: Boolean
+) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -114,22 +271,43 @@ private fun LoginScreen(phone: String, onPhoneChange: (String) -> Unit, onContin
             label = { Text("شماره موبایل") },
             placeholder = { Text("09xxxxxxxxx") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            singleLine = true
+            singleLine = true,
+            enabled = !loading
         )
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = onContinue,
-            enabled = phone.length == 11 && phone.startsWith("09"),
+            enabled = phone.length == 11 && phone.startsWith("09") && !loading,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(14.dp)
-        ) { Text("دریافت کد تایید", fontSize = 16.sp) }
+        ) {
+            if (loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+            else Text("دریافت کد تایید", fontSize = 16.sp)
+        }
+        error?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, color = Color(0xFFFF6B6B), textAlign = TextAlign.Center)
+        }
         Spacer(Modifier.height(12.dp))
-        Text("ارسال واقعی پیامک در مرحله اتصال Backend فعال می‌شود.", color = WolfMuted, fontSize = 12.sp)
+        if (productionMode) {
+            Text("کد تایید از طریق Backend ارسال می‌شود.", color = WolfMuted, fontSize = 12.sp)
+        } else {
+            Text("Demo Mode: ارسال واقعی پیامک هنوز فعال نشده است.", color = WolfMuted, fontSize = 12.sp)
+        }
     }
 }
 
 @Composable
-private fun OtpScreen(phone: String, otp: String, onOtpChange: (String) -> Unit, onVerify: () -> Unit, onBack: () -> Unit) {
+private fun OtpScreen(
+    phone: String,
+    otp: String,
+    onOtpChange: (String) -> Unit,
+    onVerify: () -> Unit,
+    onBack: () -> Unit,
+    loading: Boolean,
+    error: String?,
+    productionMode: Boolean
+) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -145,18 +323,30 @@ private fun OtpScreen(phone: String, otp: String, onOtpChange: (String) -> Unit,
             modifier = Modifier.fillMaxWidth(),
             label = { Text("کد ۶ رقمی") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true
+            singleLine = true,
+            enabled = !loading
         )
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = onVerify,
-            enabled = otp.length == 6,
+            enabled = otp.length == 6 && !loading,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(14.dp)
-        ) { Text("ورود به Wolf Den", fontSize = 16.sp) }
-        TextButton(onClick = onBack) { Text("ویرایش شماره موبایل") }
-        Text("کد تست: ۱۲۳۴۵۶", color = WolfGold, fontSize = 12.sp)
-        Text("فعلاً کد فقط از نظر ۶ رقمی بودن بررسی می‌شود.", color = WolfMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
+        ) {
+            if (loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+            else Text("ورود به Wolf Den", fontSize = 16.sp)
+        }
+        TextButton(onClick = onBack, enabled = !loading) { Text("ویرایش شماره موبایل") }
+        if (!productionMode) {
+            Text("کد تست: ۱۲۳۴۵۶", color = WolfGold, fontSize = 12.sp)
+            Text("در Demo Mode هر کد ۶ رقمی پذیرفته می‌شود.", color = WolfMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
+        } else {
+            Text("اعتبارسنجی کد توسط Backend انجام می‌شود.", color = WolfMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
+        }
+        error?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, color = Color(0xFFFF6B6B), textAlign = TextAlign.Center)
+        }
     }
 }
 
