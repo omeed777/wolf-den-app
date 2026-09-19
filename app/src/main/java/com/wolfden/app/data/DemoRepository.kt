@@ -8,6 +8,7 @@ import com.wolfden.app.model.Subscription
 import com.wolfden.app.model.SubscriptionStatus
 import com.wolfden.app.model.TrainingClass
 import org.json.JSONArray
+import org.json.JSONObject
 
 class DemoRepository(context: Context) : WolfDenRepository {
     private val preferences = context.applicationContext.getSharedPreferences(
@@ -174,6 +175,27 @@ class DemoRepository(context: Context) : WolfDenRepository {
     }
 
     private fun loadPersistedAdminClassState() {
+        val raw = preferences.getString("admin_classes", null)
+        if (!raw.isNullOrBlank()) {
+            try {
+                val json = JSONArray(raw)
+                val loaded = mutableListOf<TrainingClass>()
+                for (i in 0 until json.length()) {
+                    val o = json.getJSONObject(i)
+                    loaded += TrainingClass(
+                        o.getInt("id"), o.getString("title"), o.getString("day"),
+                        o.getString("time"), o.getInt("capacity"), o.getInt("booked"),
+                        o.getString("coach")
+                    )
+                }
+                if (loaded.isNotEmpty()) {
+                    classes.clear()
+                    classes.addAll(loaded)
+                }
+            } catch (_: Exception) {
+                preferences.edit().remove("admin_classes").apply()
+            }
+        }
         classes.indices.forEach { i ->
             val cls = classes[i]
             val stored = preferences.getInt("admin_class_" + cls.id + "_booked", -1)
