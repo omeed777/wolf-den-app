@@ -42,6 +42,7 @@ import com.wolfden.app.data.remote.CreateMemberRequest
 import com.wolfden.app.data.remote.CreateClassRequest
 import com.wolfden.app.data.remote.UpdateSubscriptionRequest
 import com.wolfden.app.data.remote.RecordAttendanceRequest
+import com.wolfden.app.data.remote.AdminBookingDto
 import com.wolfden.app.data.remote.WolfDenAdminRepository
 import com.wolfden.app.model.TrainingClass
 import com.wolfden.app.viewmodel.WolfDenViewModel
@@ -379,6 +380,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
     var showAddMember by rememberSaveable { mutableStateOf(false) }
     var showAddClass by rememberSaveable { mutableStateOf(false) }
     var showAttendance by rememberSaveable { mutableStateOf(false) }
+    val bookings = remember { mutableStateListOf<AdminBookingDto>().apply { addAll(repository.getBookings()) } }
     val members = remember { mutableStateListOf<AdminMemberDto>().apply { addAll(repository.getMembers()) } }
     val subscriptions = remember { mutableStateListOf<AdminSubscriptionDto>().apply { addAll(repository.getSubscriptions()) } }
     val classes = remember { mutableStateListOf<TrainingClassDto>().apply { addAll(repository.getClasses()) } }
@@ -391,7 +393,7 @@ private fun AdminDashboard(onBack: () -> Unit) {
             colors = TopAppBarDefaults.topAppBarColors(containerColor = WolfBlack)
         ) },
         bottomBar = { NavigationBar {
-            listOf("داشبورد", "اعضا", "اشتراک‌ها", "کلاس‌ها", "حضور", "مربی‌ها").forEachIndexed { i, label ->
+            listOf("داشبورد", "اعضا", "اشتراک‌ها", "کلاس‌ها", "رزروها", "حضور", "مربی‌ها").forEachIndexed { i, label ->
                 NavigationBarItem(selected = tab == i, onClick = { tab = i },
                     icon = { Text(if (i == 0) "●" else if (i == 1) "◆" else "▣") },
                     label = { Text(label) })
@@ -410,7 +412,8 @@ private fun AdminDashboard(onBack: () -> Unit) {
                 if (index >= 0) subscriptions[index] = updated
             }
             3 -> AdminClassesScreen(Modifier.padding(padding), classes, onAdd = { showAddClass = true })
-            4 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false })
+            4 -> AdminBookingsScreen(Modifier.padding(padding), bookings, onCancel = { bookingId -> if (repository.cancelBooking(bookingId)) bookings.removeAll { it.id == bookingId } })
+            5 -> AdminAttendanceScreen(Modifier.padding(padding), members, classes, onSave = { memberId, classId, date, present -> repository.recordAttendance(RecordAttendanceRequest(memberId, classId, date, present)); showAttendance = false })
             else -> AdminCoachesScreen(Modifier.padding(padding), repository.getCoaches())
         }
     }
@@ -572,6 +575,48 @@ private fun AdminStatCard(title: String, value: String) {
             Text(title, fontWeight = FontWeight.Bold)
             Text(value, fontSize = 24.sp, fontWeight = FontWeight.Black, color = WolfGoldBright)
         }
+    }
+}
+
+@Composable
+private fun AdminBookingsScreen(
+    modifier: Modifier,
+    bookings: List<AdminBookingDto>,
+    onCancel: (String) -> Unit
+) {
+    var selected by remember { mutableStateOf<AdminBookingDto?>(null) }
+    LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Text("رزروهای کلاس", fontSize = 28.sp, fontWeight = FontWeight.Black)
+            Text("مشاهده و مدیریت رزرو اعضا", color = WolfMuted)
+        }
+        items(bookings, key = { it.id }) { booking ->
+            Card(Modifier.fillMaxWidth().clickable { selected = booking }, RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(booking.memberName, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(booking.classTitle + " • " + booking.day + " • " + booking.time)
+                    Text("وضعیت: " + booking.status, color = WolfGoldBright)
+                    Text("ثبت: " + booking.createdAt, color = WolfMuted, fontSize = 12.sp)
+                }
+            }
+        }
+        if (bookings.isEmpty()) item { Text("رزروی ثبت نشده است.", color = WolfMuted) }
+    }
+    selected?.let { booking ->
+        AlertDialog(
+            onDismissRequest = { selected = null },
+            confirmButton = {
+                TextButton(onClick = { onCancel(booking.id); selected = null }) { Text("لغو رزرو", color = Color(0xFFFF6B6B)) }
+            },
+            dismissButton = { TextButton(onClick = { selected = null }) { Text("بستن") } },
+            title = { Text("جزئیات رزرو") },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("عضو: " + booking.memberName)
+                Text("کلاس: " + booking.classTitle)
+                Text("زمان: " + booking.day + " • " + booking.time)
+                Text("وضعیت: " + booking.status)
+            }}
+        )
     }
 }
 
