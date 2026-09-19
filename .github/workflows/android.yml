@@ -28,14 +28,6 @@ jobs:
       - name: Verify Gradle
         run: gradle --version
 
-      - name: Decode Android signing key
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
-        shell: bash
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/wolf-den-release.jks"
-
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug
 
@@ -46,13 +38,18 @@ jobs:
           sha256sum app/build/outputs/apk/debug/app-debug.apk
 
       - name: Build release APK and AAB
+        shell: bash
         env:
-          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/wolf-den-release.jks
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: gradle --no-daemon --stacktrace assembleRelease bundleRelease
-
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/wolf-den-release.jks"
+            export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/wolf-den-release.jks"
+          fi
+          gradle --no-daemon --stacktrace assembleRelease bundleRelease
       - name: Verify release APK and AAB outputs
         shell: bash
         run: |
