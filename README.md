@@ -83,7 +83,7 @@ The Android demo is now functionally wired end-to-end for local testing:
 3. Connect and verify the production member/admin endpoints.
 4. Replace the geometric placeholder wolf mark with the official Wolf Den logo asset.
 5. Run Android release QA on real devices.
-6. Configure signing and generate the release APK/AAB.
+6. Add the Wolf Den Android signing key through GitHub Secrets and generate the signed release APK/AAB.
 7. Prepare the iOS client after Android V1 is stable.
 
 Payments remain outside V1.
@@ -91,4 +91,4 @@ Payments remain outside V1.
 
 ## Release artifacts
 
-GitHub Actions builds both a debug APK and an unsigned release APK/AAB. The release artifacts are intentionally unsigned until the Wolf Den signing key is configured through GitHub Secrets; no private signing key is stored in the repository.
+GitHub Actions builds debug and release APK/AAB artifacts. Release signing is optional and uses GitHub Secrets only; no private signing key is stored in the repository.
