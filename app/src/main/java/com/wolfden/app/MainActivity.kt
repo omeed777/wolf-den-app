@@ -27,10 +27,13 @@ import com.wolfden.app.model.Booking
 import com.wolfden.app.model.TrainingClass
 import com.wolfden.app.viewmodel.WolfDenViewModel
 
-private val WolfBlack = Color(0xFF111111)
-private val WolfRed = Color(0xFFE53935)
-private val WolfSurface = Color(0xFFF4F4F2)
-private val WolfGold = Color(0xFFFFC107)
+private val WolfBlack = Color(0xFF080808)
+private val WolfSurface = Color(0xFF111111)
+private val WolfCard = Color(0xFF1A1A1A)
+private val WolfGold = Color(0xFFD4AF37)
+private val WolfGoldBright = Color(0xFFFFD700)
+private val WolfText = Color(0xFFF5F5F5)
+private val WolfMuted = Color(0xFFB8B8B8)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,7 +48,18 @@ private fun WolfDenApp() {
     var phone by rememberSaveable { mutableStateOf("") }
     val viewModel: WolfDenViewModel = viewModel()
 
-    MaterialTheme(colorScheme = lightColorScheme(primary = WolfRed, background = WolfSurface)) {
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            primary = WolfGoldBright,
+            onPrimary = WolfBlack,
+            secondary = WolfGold,
+            background = WolfSurface,
+            surface = WolfCard,
+            onBackground = WolfText,
+            onSurface = WolfText,
+            outline = Color(0xFF4A4A4A)
+        )
+    ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             if (!loggedIn) LoginFlow(phone, { phone = it }) { loggedIn = true }
             else MainShell(viewModel, onLogout = { loggedIn = false })
@@ -70,12 +84,12 @@ private fun LoginScreen(phone: String, onPhoneChange: (String) -> Unit, onContin
     ) {
         WolfBrand(size = 74.dp)
         Spacer(Modifier.height(14.dp))
-        Text("WOLF DEN", fontSize = 38.sp, fontWeight = FontWeight.Black, color = WolfBlack)
-        Text("CROSSFIT", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WolfRed)
+        Text("WOLF DEN", fontSize = 38.sp, fontWeight = FontWeight.Black, color = WolfGoldBright)
+        Text("CROSSFIT", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WolfGold)
         Spacer(Modifier.height(36.dp))
         Text("ورود اعضا", fontSize = 26.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        Text("برای ورود شماره موبایل خود را وارد کنید.", color = Color.Gray, textAlign = TextAlign.Center)
+        Text("برای ورود شماره موبایل خود را وارد کنید.", color = WolfMuted, textAlign = TextAlign.Center)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(
             value = phone,
@@ -197,7 +211,7 @@ private fun MainShell(viewModel: WolfDenViewModel, onLogout: () -> Unit) {
             contentAlignment = Alignment.BottomCenter
         ) {
             Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = WolfBlack)) {
-                Text(message, color = Color.White, modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp))
+                Text(message, color = WolfText, modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp))
             }
         }
     }
@@ -216,7 +230,7 @@ private fun HomeScreen(
             WolfBrand(size = 48.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("WOLF DEN", fontSize = 24.sp, fontWeight = FontWeight.Black, color = WolfBlack)
+                Text("WOLF DEN", fontSize = 24.sp, fontWeight = FontWeight.Black, color = WolfGoldBright)
                 Text("سلام $memberName 👋", fontSize = 16.sp)
             }
         }
@@ -224,7 +238,7 @@ private fun HomeScreen(
             Column(Modifier.padding(20.dp)) {
                 Text("اشتراک فعال", color = Color.White)
                 Text("۱۲ جلسه", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                Text("برای مشاهده تعداد جلسات باقی‌مانده وارد بخش اشتراک شوید.", color = Color.LightGray)
+                Text("برای مشاهده تعداد جلسات باقی‌مانده وارد بخش اشتراک شوید.", color = Color(0xFFD0D0D0))
             }
         }
         if (bookingCount > 0) Text("رزروهای فعال: $bookingCount جلسه", color = WolfRed, fontWeight = FontWeight.Bold)
@@ -275,7 +289,7 @@ private fun MyBookingsScreen(
         Text("کلاس‌های رزروشده فعلی", color = Color.Gray)
         Spacer(Modifier.height(16.dp))
         if (bookings.isEmpty()) {
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp)) {
+            Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = WolfCard)) {
                 Column(Modifier.padding(20.dp)) {
                     Text("هنوز کلاسی رزرو نکرده‌ای.", fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
@@ -342,7 +356,7 @@ private fun SubscriptionScreen(
     Column(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("اشتراک من", fontSize = 28.sp, fontWeight = FontWeight.Black)
         Text(memberName, color = Color.Gray)
-        Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp)) {
+        Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = WolfCard)) {
             Column(Modifier.padding(20.dp)) {
                 Text("پلن فعلی", color = Color.Gray)
                 Text(plan, fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -372,7 +386,7 @@ private fun WolfBrand(size: androidx.compose.ui.unit.Dp) {
             close()
         }
         drawPath(path, color = WolfBlack)
-        drawCircle(WolfRed, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.39f, h * 0.48f))
+        drawCircle(WolfGoldBright, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.39f, h * 0.48f))
         drawCircle(WolfRed, radius = w * 0.055f, center = androidx.compose.ui.geometry.Offset(w * 0.61f, h * 0.48f))
         drawLine(WolfGold, androidx.compose.ui.geometry.Offset(w * 0.42f, h * 0.68f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.74f), strokeWidth = w * 0.04f)
         drawLine(WolfGold, androidx.compose.ui.geometry.Offset(w * 0.58f, h * 0.68f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.74f), strokeWidth = w * 0.04f)
