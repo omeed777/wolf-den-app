@@ -2,6 +2,7 @@ package com.wolfden.app
 
 import android.app.Activity
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
@@ -17,10 +18,21 @@ class MainActivity : Activity() {
     private val gold = Color.rgb(255, 215, 0)
     private val white = Color.rgb(245, 245, 245)
     private val muted = Color.rgb(184, 184, 184)
+    private val fieldBackground = Color.rgb(22, 22, 22)
+    private val border = Color.rgb(95, 95, 95)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showLogin()
+    }
+
+    private fun fieldBackground(): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 18f
+            setColor(fieldBackground)
+            setStroke(2, border)
+        }
     }
 
     private fun showLogin() {
@@ -70,7 +82,7 @@ class MainActivity : Activity() {
         root.addView(heading, headingParams)
 
         val hint = TextView(this).apply {
-            text = "برای ورود شماره موبایل خود را وارد کنید."
+            text = "شماره موبایل خود را وارد کنید"
             textSize = 15f
             gravity = Gravity.CENTER
             setTextColor(muted)
@@ -78,16 +90,18 @@ class MainActivity : Activity() {
         root.addView(hint, LinearLayout.LayoutParams(-1, -2))
 
         val phone = EditText(this).apply {
-            this.hint = "09xxxxxxxxx"
+            hint = "09xxxxxxxxx"
             textSize = 18f
             setTextColor(white)
-            setHintTextColor(Color.GRAY)
+            setHintTextColor(Color.rgb(130, 130, 130))
             inputType = InputType.TYPE_CLASS_PHONE
             gravity = Gravity.CENTER
             setSingleLine(true)
+            setPadding(24, 0, 24, 0)
+            background = fieldBackground()
         }
-        val phoneParams = LinearLayout.LayoutParams(-1, 58)
-        phoneParams.topMargin = 24
+        val phoneParams = LinearLayout.LayoutParams(-1, 64)
+        phoneParams.topMargin = 20
         root.addView(phone, phoneParams)
 
         val continueButton = Button(this).apply {
@@ -127,6 +141,13 @@ class MainActivity : Activity() {
             setBackgroundColor(black)
         }
 
+        val brand = ImageView(this).apply {
+            setImageResource(com.wolfden.app.R.drawable.ic_wolf_den)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            contentDescription = "Wolf Den logo"
+        }
+        root.addView(brand, LinearLayout.LayoutParams(-1, 130))
+
         val title = TextView(this).apply {
             text = "تایید شماره"
             textSize = 28f
@@ -150,11 +171,13 @@ class MainActivity : Activity() {
             textSize = 20f
             gravity = Gravity.CENTER
             setTextColor(white)
-            setHintTextColor(Color.GRAY)
+            setHintTextColor(Color.rgb(130, 130, 130))
             inputType = InputType.TYPE_CLASS_NUMBER
             setSingleLine(true)
+            setPadding(24, 0, 24, 0)
+            background = fieldBackground()
         }
-        val otpParams = LinearLayout.LayoutParams(-1, 58)
+        val otpParams = LinearLayout.LayoutParams(-1, 64)
         otpParams.topMargin = 24
         root.addView(otp, otpParams)
 
@@ -173,7 +196,9 @@ class MainActivity : Activity() {
             text = "ویرایش شماره موبایل"
             setOnClickListener { showLogin() }
         }
-        root.addView(back, LinearLayout.LayoutParams(-1, 52))
+        val backParams = LinearLayout.LayoutParams(-1, 52)
+        backParams.topMargin = 8
+        root.addView(back, backParams)
 
         setContentView(root)
     }
