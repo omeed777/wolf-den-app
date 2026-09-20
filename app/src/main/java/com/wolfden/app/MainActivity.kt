@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -33,12 +34,14 @@ class MainActivity : Activity() {
         val spacerTop = View(this)
         root.addView(spacerTop, LinearLayout.LayoutParams(1, 0, 1f))
 
-        val brand = TextView(this).apply {
-            text = "🐺"
-            textSize = 64f
-            gravity = Gravity.CENTER
+        val brand = ImageView(this).apply {
+            setImageResource(com.wolfden.app.R.drawable.ic_wolf_den)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            contentDescription = "Wolf Den logo"
         }
-        root.addView(brand, LinearLayout.LayoutParams(-1, -2))
+        val brandParams = LinearLayout.LayoutParams(-1, 150)
+        brandParams.bottomMargin = 8
+        root.addView(brand, brandParams)
 
         val title = TextView(this).apply {
             text = "WOLF DEN"
