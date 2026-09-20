@@ -81,13 +81,13 @@ class MainActivity : Activity() {
         headingParams.topMargin = 42
         root.addView(heading, headingParams)
 
-        val hint = TextView(this).apply {
+        val phoneHint = TextView(this).apply {
             text = "شماره موبایل خود را وارد کنید"
             textSize = 15f
             gravity = Gravity.CENTER
             setTextColor(muted)
         }
-        root.addView(hint, LinearLayout.LayoutParams(-1, -2))
+        root.addView(phoneHint, LinearLayout.LayoutParams(-1, -2))
 
         val phone = EditText(this).apply {
             hint = "09xxxxxxxxx"
