@@ -75,7 +75,7 @@ class MainActivity : Activity() {
         root.addView(hint, LinearLayout.LayoutParams(-1, -2))
 
         val phone = EditText(this).apply {
-            hint = "09xxxxxxxxx"
+            this.hint = "09xxxxxxxxx"
             textSize = 18f
             setTextColor(white)
             setHintTextColor(Color.GRAY)
